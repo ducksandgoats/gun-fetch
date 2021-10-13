@@ -1,6 +1,7 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
 require('gun/lib/path')
+require('gun/lib/not')
 // require('gun/lib/unset')
 // require( 'gun-unset' )
 
@@ -24,186 +25,107 @@ module.exports = function makeGunFetch(opts = {}){
 
     const gun = Gun(opts)
 
-    const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'PATCH', 'POST', 'DELETE']
+    const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
+    const GUN_HEADER = {USER: ['ALIAS'], GET: ['NOT'], PUT: [], DELETE: []}
 
-    function userPub(hostpath){
-        return new Promise((resolve) => {
-            gun.user(hostpath).once(done => {resolve(done)})
-        })
-    }
-    function userPath(host, path){
-        return new Promise((resolve) => {
-            gun.user(host).path(path).once(done => {resolve(done)})
-        })
-    }
-    function userIn(body){
-        return new Promise((resolve) => {
-            gun.user().create(body.user, body.pass, (ack) => {resolve(ack)})
-        })
-    }
-    function userOut(body){
-        return new Promise((resolve) => {
-            gun.user().delete(body.user, body.pass, (ack) => {resolve(ack)})
-        })
-    }
-    function userLogin(body){
-        return new Promise((resolve) => {
-            gun.user().auth(body.user, body.pass, (ack) => {
-                resolve(ack)
-            })
-        })
-    }
-    function userLogout(hostpath){
-        return new Promise((resolve) => {
-            gun.user().leave()
-            resolve(hostpath)
-        })
-    }
-    function getGun(hostpath){
-        return new Promise((resolve) => {
-            gun.path(hostpath.split('/').join('.')).once(found => {resolve(found)})
-        })
-    }
-    function setGun(hostpath, data){
-        return new Promise((resolve) => {
-            gun.path(hostpath.split('/').join('.')).put(data).once(done => {resolve(done)})
-        })
-    }
-    function postGun(hostpath, data){
-        return new Promise((resolve) => {
-            gun.path(hostpath.split('/').join('.')).put(data).once(done => {resolve(done)})
-        })
-    }
-    function deleteGun(hostpath, data){
-        return new Promise((resolve) => {
-            gun.path(hostpath.split('/').join('.')).put(data).once(done => {resolve(done)})
-        })
-    }
-    function unsetGun(hostpath, data){
-        return new Promise((resolve) => {
-            gun.path(hostpath.split('/').join('.')).put(data).once(done => {resolve(done)})
-        })
-    }
+    // X-Auth uses GUN_HEADER.USER
+    // X-Gun user all other properties of GUN_HEADER
 
     const fetch = makeFetch(async request => {
+
+        if(request.url.includes(' ')){
+            return new Error('gun url can not contain space')
+        }
+
         const {
             url,
             method,
             headers,
             body
           } = request
+          
           try {
             const {
                 hostname,
                 pathname,
                 protocol
               } = new URL(url)
-            //   const hostpath = pathname ? hostname + '/' + pathname : hostname
+
               if(protocol !== 'gun:'){
                   return new Error('invalid protocol, must be gun:')
               }
-              if(method === 'HEAD'){
-                //   if(hostname === 'user'){
-                //       let data = await headGunUser(pathname)
-                //       if(data){
-                //         return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                //     } else {
-                //         return {statusCode: 200, headers, data: []}
-                //     }
-                //   } else if(hostname === 'in'){
-                //       gun.create(body.user, body.pass, body.cb, body.opt)
-                //   } else if(hostname === 'login'){
-                //       gun.auth(body.user, body.pass, body.cb, body.opt)
-                //   } else if(hostname === 'logout'){} else if(hostname === 'out'){} else if(hostname === 'recall'){} else if(hostname === 'alive'){} else if(hostname === 'trust'){} else if(hostname === 'grant'){} else if(hostname === 'secret'){} else if(hostname === 'db'){} else {
-                //     return {
-                //         // statusCode: 404,
-                //         statusCode: 400,
-                //         headers,
-                //         data: []
-                //       }
-                //   }
-                return {statusCode: 400, headers, data}
-              } else if(method === 'GET'){
-                  if(hostname === 'user'){
-                    let data = await userPub(pathname)
-                    if(data){
-                        return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                    } else {
-                        return {statusCode: 200, headers, data: []}
-                    }
-                  } else if(hostname === 'path'){
-                    let data = await userPath(pathname)
-                    if(data){
-                        return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                    } else {
-                        return {statusCode: 200, headers, data: []}
-                    }
-                  } else if(hostname === 'get'){
-                        let data = await getGun(pathname)
-                        if(data){
-                            return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                        } else {
-                            return {statusCode: 200, headers, data: []}
-                        }
-                  } else {
-                    return {statusCode: 400, headers, data: []}
-                  }
-              } else if(method === 'DELETE'){
-                  if(hostname === 'user'){
-                    let data = await userOut(body)
-                    return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                  } else if(hostname === 'logout'){
-                    let data = await userLogout('true')
-                    return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                  } else if(hostname === 'delete'){
-                    let data = await deleteGun(pathname, null)
-                    if(data){
-                        return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                    } else {
-                        return {statusCode: 200, headers, data: []}
-                    }
-                  } else {
-                    return {statusCode: 200, headers, data: []}
-                  }
-                // if(hostname === 'unset'){
-                // //     let data = await unsetGun(pathname, body)
-                // //     if(data){
-                // //       return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                // //   } else {
-                // //       return {statusCode: 200, headers, data: []}
-                // //   }
 
-                // // unset not working right now
-                // return {statusCode: 200, headers, data: []}
-                //   }
-              } else if(method === 'POST'){
-                  if(hostname === 'user'){
-                    let data = await userIn(body)
-                    return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                  } else if(hostname === 'login'){
-                    let data = await userLogin(body)
-                    return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                  } else if(hostname === 'create'){
-                    let data = await postGun(pathname, body)
-                    if(data){
-                        return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
+              if(method === SUPPORTED_METHODS[0]){
+                  // get route
+
+                  let mainQuery = null
+                  let mainRes = {statusCode: 0, headers: {}, data: null}
+
+                  if(!headers['x-auth']){
+                      mainQuery = `${hostname}${pathname}`.split('/').join('.')
+                  } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
+                      mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
+                  } else {
+                      mainRes.statusCode = 400
+                      mainRes.headers = {}
+                      mainRes.data = ['Error with Headers']
+                      return mainRes
+                  }
+
+                  if(!headers['x-gun']){
+                      mainData = await new Promise((resolve) => {
+                        gun.path(mainQuery).once(found => {resolve(found)})
+                    })
+                    
+                    mainRes.statusCode = 200
+                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(mainRes.data.length){
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
                     } else {
-                        return {statusCode: 200, headers, data: []}
+                        mainRes.headers = {}
+                    }
+                  } else if(headers['x-gun'] === GUN_HEADER.GET[0]){
+                    mainData = await new Promise((resolve) => {
+                        gun.path(mainQuery).not(found => {resolve({propkey: found, not: 1})})
+                        // if .not() callback does not run after 15 seconds, then setTimeout cuts off the function
+                        setTimeout(() => {
+                            resolve({propkey: mainQuery.split('.').pop(), not: 0})
+                        }, 15000)
+                    })
+
+                    mainRes.statusCode = 200
+                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(mainRes.data.length){
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    } else {
+                        mainRes.headers = {}
                     }
                   } else {
-                      return {statusCode: 200, headers, data: []}
+                        mainRes.statusCode = 400
+                        mainRes.headers = {}
+                        mainRes.data = ['Error with Headers']
+                        return mainRes
                   }
-                //   if(hostname === 'set'){
-                //       let data = await setGun(pathname, body)
-                //       if(data){
-                //         return {statusCode: 200, headers, data: [Buffer.from(JSON.stringify(data), 'utf-8')]}
-                //     } else {
-                //         return {statusCode: 200, headers, data: []}
-                //     }
-                //   }
+
+                  return mainRes
+              } else if(method === SUPPORTED_METHODS[1]){
+                  // put route
+                let data = await new Promise((resolve) => {
+                    gun.path(`${hostname}/${pathname}`.split('/').join('.')).put(body).once(found => {resolve(found)})
+                })
+                return {statusCode: 200, headers, data: typeof(data) !== 'undefined' ? [JSON.stringify(data)] : []}
+              } else if(method === SUPPORTED_METHODS[2]){
+                  // delete route
+                  let data = await new Promise((resolve) => {
+                    gun.path(`${hostname}/${pathname}`.split('/').join('.')).put(null).once(found => {resolve(found)})
+                })
+                return {statusCode: 200, headers, data: typeof(data) !== 'undefined' ? [JSON.stringify(data)] : []}
+              } else {
+                return {statusCode: 400, headers, data: []}
               }
           } catch (e) {
-                return {statusCode: 500, data: [e.stack]}
+                return {statusCode: 500, headers, data: [e.stack]}
           }
     })
 
