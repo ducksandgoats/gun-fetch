@@ -7,8 +7,11 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# radata
+# radata files
 radata*
+
+# radata folder
+radata/
 
 # app file
 app.js

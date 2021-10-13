@@ -2,6 +2,7 @@ const makeFetch = require('make-fetch')
 const Gun = require('gun')
 require('gun/lib/path')
 require('gun/lib/not')
+require('gun/lib/unset')
 // require('gun/lib/unset')
 // require( 'gun-unset' )
 
@@ -26,7 +27,7 @@ module.exports = function makeGunFetch(opts = {}){
     const gun = Gun(opts)
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
-    const GUN_HEADER = {USER: ['ALIAS'], GET: ['NOT'], PUT: [], DELETE: []}
+    const GUN_HEADER = {USER: ['ALIAS'], GET: ['NOT'], PUT: ['SET'], DELETE: ['UNSET']}
 
     // X-Auth uses GUN_HEADER.USER
     // X-Gun user all other properties of GUN_HEADER
@@ -55,28 +56,29 @@ module.exports = function makeGunFetch(opts = {}){
                   return new Error('invalid protocol, must be gun:')
               }
 
-              if(method === SUPPORTED_METHODS[0]){
-                  // get route
+              // declare main response variables, if everything is handled correctly then mainRes variable will be sent back as a response
+              let mainQuery = null
+              let mainRes = {statusCode: 0, headers: {}, data: null}
 
-                  let mainQuery = null
-                  let mainRes = {statusCode: 0, headers: {}, data: null}
+              if(method === SUPPORTED_METHODS[0]){
+
+                  /* 
+                  handle get request with headers, if X-Gun header is NOT, then not method will be used
+                  */
 
                   if(!headers['x-auth']){
                       mainQuery = `${hostname}${pathname}`.split('/').join('.')
                   } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
                       mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
                   } else {
-                      mainRes.statusCode = 400
-                      mainRes.headers = {}
-                      mainRes.data = ['Error with Headers']
-                      return mainRes
+                      // error with the headers
+                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                   }
 
                   if(!headers['x-gun']){
                       mainData = await new Promise((resolve) => {
                         gun.path(mainQuery).once(found => {resolve(found)})
                     })
-                    
                     mainRes.statusCode = 200
                     mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
                     mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
@@ -102,30 +104,110 @@ module.exports = function makeGunFetch(opts = {}){
                         mainRes.headers = {}
                     }
                   } else {
-                        mainRes.statusCode = 400
-                        mainRes.headers = {}
-                        mainRes.data = ['Error with Headers']
-                        return mainRes
+                      // error with the headers
+                        return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                   }
 
-                  return mainRes
               } else if(method === SUPPORTED_METHODS[1]){
-                  // put route
-                let data = await new Promise((resolve) => {
-                    gun.path(`${hostname}/${pathname}`.split('/').join('.')).put(body).once(found => {resolve(found)})
-                })
-                return {statusCode: 200, headers, data: typeof(data) !== 'undefined' ? [JSON.stringify(data)] : []}
+
+                /*
+                handle put request with headers, if X-Gun header is SET, then set method will be used
+                */
+                  if(!headers['x-auth']){
+                      mainQuery = `${hostname}${pathname}`.split('/').join('.')
+                  } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
+                      mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
+                  } else {
+                      // error with the headers
+                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                  }
+
+                  if(!headers['x-gun']){
+                    mainData = await new Promise((resolve) => {
+                        gun.path(mainQuery).put(body).once(found => {resolve(found)})
+                    })
+                    
+                    mainRes.statusCode = 200
+                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(mainRes.data.length){
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    } else {
+                        mainRes.headers = {}
+                    }
+                  } else if(headers['x-gun'] === GUN_HEADER.PUT[0]){
+                        mainData = await new Promise((resolve) => {
+                            gun.path(mainQuery).set(body).once(found => {resolve(found)})
+                        })
+                        
+                        mainRes.statusCode = 200
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(mainRes.data.length){
+                            mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            mainRes.headers = {}
+                        }
+                  } else {
+                      // error with the headers
+                    return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                  }
+
               } else if(method === SUPPORTED_METHODS[2]){
-                  // delete route
-                  let data = await new Promise((resolve) => {
-                    gun.path(`${hostname}/${pathname}`.split('/').join('.')).put(null).once(found => {resolve(found)})
-                })
-                return {statusCode: 200, headers, data: typeof(data) !== 'undefined' ? [JSON.stringify(data)] : []}
+
+                /*
+                handle delete request with headers, if X-Gun header is UNSET, then unset method will be used
+                */
+                  if(!headers['x-auth']){
+                    mainQuery = `${hostname}${pathname}`.split('/').join('.')
+                } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
+                    mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
+                } else {
+                    // error with the headers
+                    return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                }
+
+                if(!headers['x-gun']){
+                    mainData = await new Promise((resolve) => {
+                        gun.path(mainQuery).put(null).once(found => {resolve(found)})
+                    })
+                    
+                    mainRes.statusCode = 200
+                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(mainRes.data.length){
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    } else {
+                        mainRes.headers = {}
+                    }
+                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[0]){
+                        mainData = await new Promise((resolve) => {
+                            gun.path(mainQuery).unset(body).once(found => {resolve(found)})
+                        })
+                        
+                        mainRes.statusCode = 200
+                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(mainRes.data.length){
+                            mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            mainRes.headers = {}
+                        }
+                  } else {
+                      // error with the headers
+                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                  }
               } else {
-                return {statusCode: 400, headers, data: []}
+                  // the http method that was used is not supported
+                  return {statusCode: 400, headers: {}, data: ['Error with Method']}
               }
+
+              // if everything was done correctly, then mainRes will be sent as a response
+              return mainRes
+
           } catch (e) {
-                return {statusCode: 500, headers, data: [e.stack]}
+              // there was an error
+              return {statusCode: 500, headers, data: [e.stack]}
           }
     })
 
