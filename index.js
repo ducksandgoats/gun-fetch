@@ -180,7 +180,9 @@ module.exports = function makeGunFetch(opts = {}){
                     } else {
                         mainRes.headers = {}
                     }
-                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[0]){
+                  }
+                  // UNSET is not working for now, must be fixed
+                  /* if(headers['x-gun'] === GUN_HEADER.DELETE[0]){
                         mainData = await new Promise((resolve) => {
                             gun.path(mainQuery).unset(body).once(found => {resolve(found)})
                         })
@@ -193,7 +195,8 @@ module.exports = function makeGunFetch(opts = {}){
                         } else {
                             mainRes.headers = {}
                         }
-                  } else {
+                  } */
+                  else {
                       // error with the headers
                       return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                   }
