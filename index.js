@@ -27,15 +27,15 @@ module.exports = function makeGunFetch(opts = {}){
     const gun = Gun(opts)
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
-    const GUN_HEADER = {USER: ['ALIAS'], GET: ['NOT'], PUT: ['SET'], DELETE: ['UNSET']}
-
+    const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['REG'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
+    const users = {}
     // X-Auth uses GUN_HEADER.USER
     // X-Gun user all other properties of GUN_HEADER
 
     const fetch = makeFetch(async request => {
 
         if(request.url.includes(' ')){
-            return new Error('gun url can not contain space')
+            return new Error('gun url can not contain spaces')
         }
 
         const {
@@ -54,58 +54,80 @@ module.exports = function makeGunFetch(opts = {}){
 
               if(protocol !== 'gun:'){
                   return new Error('invalid protocol, must be gun:')
+              } else if(!method || !SUPPORTED_METHODS.includes(method)){
+                  return {statusCode: 400, headers: {}, data: ['Error with Method']}
+              } else if(!headers || !headers['x-gun-fig'] || !headers['x-gun-func']){
+                  return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+              }
+              
+              if(!hostname){
+                  return {statusCode: 400, headers: {}, data: ['Error with Hostname']}
               }
 
-              // declare main response variables, if everything is handled correctly then mainRes variable will be sent back as a response
-              let mainQuery = null
-              let mainRes = {statusCode: 0, headers: {}, data: null}
+              // declare main response variables, if everything is handled correctly then res variable will be sent back as a response
+              let req = formatReq(`${hostname}${pathname}`)
+              let query = null
+              if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[0]){
+                 if(req.count > 2){
+                     query = gun.get(req.parts.start).path(req.parts.endPath)
+                 } else if(req.count === 2){
+                     query = gun.get(req.parts.start).get(req.parts.end)
+                 } else if(req.count === 1){
+                     query = gun.get(req.parts.start)
+                 } else {
+                     return {statusCode: 400, headers: {}, data: ['Error with url']}
+                 }
+                } else if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[1]){
+                    if(req.count > 2){
+                        query = gun.user(req.parts.start).path(req.parts.endPath)
+                    } else if(req.count === 2){
+                        query = gun.user(req.parts.start).get(req.parts.end)
+                    } else if(req.count === 1){
+                        query = gun.user(req.parts.start)
+                    } else {
+                        return {statusCode: 400, headers: {}, data: ['Error with url']}
+                    }
+                } else if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[2]){
+                    if(!users[req.parts.start]){
+                        return {statusCode: 400, headers: {}, data: ['Error with url']}
+                    } else {
+                        if(req.count > 2){
+                            query = users[req.parts.start].path(req.parts.endPath)
+                        } else if(req.count === 2){
+                            query = users[req.parts.start].get(req.parts.end)
+                        } else if(req.count === 1){
+                            query = users[req.parts.start]
+                        } else {
+                            return {statusCode: 400, headers: {}, data: ['Error with url']}
+                        }
+                    }
+                } else if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[3]){
+                    query = req.parts.start
+                }
+                
+                let res = {statusCode: 0, headers: {}, data: null}
 
               if(method === SUPPORTED_METHODS[0]){
 
                   /* 
                   handle get request with headers, if X-Gun header is NOT, then not method will be used
                   */
+                 if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.GET.includes(headers['x-gun-func'])){
+                    return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                 }
 
-                  if(!headers['x-auth']){
-                      mainQuery = `${hostname}${pathname}`.split('/').join('.')
-                  } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
-                      mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
-                  } else {
-                      // error with the headers
-                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-                  }
-
-                  if(!headers['x-gun']){
-                      mainData = await new Promise((resolve) => {
-                        gun.path(mainQuery).once(found => {resolve(found)})
+                  if(headers['x-gun-func'] === GUN_HEADERS.GET[0]){
+                      let mainData = await new Promise((resolve) => {
+                          query.once(found => {resolve(found)})
                     })
-                    mainRes.statusCode = 200
-                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(mainRes.data.length){
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.statusCode = 200
+                    res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(res.data.length){
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
                     } else {
-                        mainRes.headers = {}
+                        res.headers = {}
                     }
-                  } else if(headers['x-gun'] === GUN_HEADER.GET[0]){
-                    mainData = await new Promise((resolve) => {
-                        gun.path(mainQuery).not(found => {resolve({propkey: found, not: 1})})
-                        // if .not() callback does not run after 15 seconds, then setTimeout cuts off the function
-                        setTimeout(() => {
-                            resolve({propkey: mainQuery.split('.').pop(), not: 0})
-                        }, 15000)
-                    })
-
-                    mainRes.statusCode = 200
-                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(mainRes.data.length){
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    } else {
-                        mainRes.headers = {}
-                    }
-                  } else {
-                      // error with the headers
-                        return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                   }
 
               } else if(method === SUPPORTED_METHODS[1]){
@@ -113,106 +135,241 @@ module.exports = function makeGunFetch(opts = {}){
                 /*
                 handle put request with headers, if X-Gun header is SET, then set method will be used
                 */
-                  if(!headers['x-auth']){
-                      mainQuery = `${hostname}${pathname}`.split('/').join('.')
-                  } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
-                      mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
-                  } else {
-                      // error with the headers
-                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-                  }
+                if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.PUT.includes(headers['x-gun-func'])){
+                    return {statusCode: 400, headers: {}, data: ['Error with Headers']}
+                 }
 
-                  if(!headers['x-gun']){
-                    mainData = await new Promise((resolve) => {
-                        gun.path(mainQuery).put(body).once(found => {resolve(found)})
+                 if(headers['x-gun'] === GUN_HEADER.PUT[0]){
+                    let mainData = await new Promise((resolve) => {
+                        query.put(body).once(found => {resolve(found)})
                     })
                     
-                    mainRes.statusCode = 200
-                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(mainRes.data.length){
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.statusCode = 200
+                    res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(res.data.length){
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
                     } else {
-                        mainRes.headers = {}
+                        res.headers = {}
                     }
-                  } else if(headers['x-gun'] === GUN_HEADER.PUT[0]){
-                        mainData = await new Promise((resolve) => {
-                            gun.path(mainQuery).set(body).once(found => {resolve(found)})
-                        })
-                        
-                        mainRes.statusCode = 200
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                        mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(mainRes.data.length){
-                            mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                        } else {
-                            mainRes.headers = {}
-                        }
-                  } else {
-                      // error with the headers
-                    return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-                  }
+                 } else if(headers['x-gun'] === GUN_HEADER.PUT[1]){
+                    let mainData = await new Promise((resolve) => {
+                        query.set(body).once(found => {resolve(found)})
+                    })
+                    
+                    res.statusCode = 200
+                    res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(res.data.length){
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    } else {
+                        res.headers = {}
+                    }
+                 } else if(headers['x-gun'] === GUN_HEADER.PUT[2]){
+                    if(!query.match(/^[0-9a-zA-Z]+$/)){
+                        return {statusCode: 400, headers: {}, data: ['Error with Alias']}
+                    }
+                      let mainData = await new Promise((resolve) => {
+                          if(!users[query]){
+                                gun.user().create(query, body, ack => {
+                                    resolve(ack)
+                                })
+                          } else {
+                              resolve({done: 'User is currently logged in'})
+                          }
+                      })
+                      
+                      res.statusCode = 200
+                      res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                      res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                      if(res.data.length){
+                          res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                      } else {
+                          res.headers = {}
+                      }
+                 } else if(headers['x-gun'] === GUN_HEADER.PUT[3]){
+                    if(!query.match(/^[0-9a-zA-Z]+$/)){
+                        return {statusCode: 400, headers: {}, data: ['Error with Alias']}
+                    }
+                      let mainData = await new Promise((resolve) => {
+                          if(!users[query]){
+                            let tempUser = gun.user()
+                            tempUser.auth(query, body, ack => {
+                                if(ack.err){
+                                    resolve(ack)
+                                } else {
+                                    users[query] = tempUser
+                                    resolve(ack)
+                                }
+                            })
+                          } else {
+                              resolve({done: 'User is already logged in'})
+                          }
+                      })
+                      
+                      res.statusCode = 200
+                      res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                      res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                      if(res.data.length){
+                          res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                      } else {
+                          res.headers = {}
+                      }
+                 }
 
               } else if(method === SUPPORTED_METHODS[2]){
 
                 /*
                 handle delete request with headers, if X-Gun header is UNSET, then unset method will be used
                 */
-                  if(!headers['x-auth']){
-                    mainQuery = `${hostname}${pathname}`.split('/').join('.')
-                } else if(headers['x-auth'] === GUN_HEADER.USER[0]){
-                    mainQuery = `~@${hostname}${pathname}`.split('/').join('.')
-                } else {
-                    // error with the headers
+                if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.DELETE.includes(headers['x-gun-func'])){
                     return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-                }
+                 }
 
-                if(!headers['x-gun']){
-                    mainData = await new Promise((resolve) => {
-                        gun.path(mainQuery).put(null).once(found => {resolve(found)})
+                if(headers['x-gun-func'] === GUN_HEADERS.DELETE[0]){
+                    let mainData = await new Promise((resolve) => {
+                        query.put(null).once(found => {resolve(found)})
                     })
                     
-                    mainRes.statusCode = 200
-                    mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(mainRes.data.length){
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.statusCode = 200
+                    res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(res.data.length){
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
                     } else {
-                        mainRes.headers = {}
+                        res.headers = {}
                     }
+                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[1]){
+                        let mainData = await new Promise((resolve) => {
+                            query.unset(body).once(found => {resolve(found)})
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            res.headers = {}
+                        }
+                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[2]){
+                        let mainData = await new Promise((resolve) => {
+                            if(!users[query]){
+                                resolve({done: 'User is not logged in'})
+                            } else {
+                                users[query].leave()
+                                delete users[query]
+                                resolve({done: 'User has been logged out'})
+                            }
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            res.headers = {}
+                        }
+                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[3]){
+                      // work in progress
+                        let mainData = await new Promise((resolve) => {
+                            if(!users[query]){
+                                users[query].delete(query, body, ack => {
+                                    resolve(ack)
+                                })
+                            } else {
+                                resolve({err: 'User is currently logged in'})
+                            }
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            res.headers = {}
+                        }
                   }
                   // UNSET is not working for now, must be fixed
                   /* if(headers['x-gun'] === GUN_HEADER.DELETE[0]){
-                        mainData = await new Promise((resolve) => {
+                        let mainData = await new Promise((resolve) => {
                             gun.path(mainQuery).unset(body).once(found => {resolve(found)})
                         })
                         
-                        mainRes.statusCode = 200
-                        mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
-                        mainRes.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(mainRes.data.length){
-                            mainRes.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.statusCode = 200
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         } else {
-                            mainRes.headers = {}
+                            res.headers = {}
                         }
                   } */
-                  else {
-                      // error with the headers
-                      return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-                  }
-              } else {
-                  // the http method that was used is not supported
-                  return {statusCode: 400, headers: {}, data: ['Error with Method']}
               }
 
-              // if everything was done correctly, then mainRes will be sent as a response
-              return mainRes
+              // if everything was done correctly, then res will be sent as a response
+              return res
 
           } catch (e) {
               // there was an error
               return {statusCode: 500, headers, data: [e.stack]}
           }
     })
+
+    function formatReq(req){
+        let split = req.split('/').filter(Boolean)
+        let join = split.join('.')
+        let count = split.length
+        let parts = {start: null, end: null, middle: null, startPath: null, endPath: null}
+        let about = {notAble: null, hasMid: null, onlyHost: null, hasPath: null}
+        if(count > 2){
+            let check = req.split('/').filter(Boolean)
+            parts.start = check.shift()
+            parts.end = check.pop()
+            parts.middle = check.join('.')
+            parts.startPath = parts.start + '.' + parts.middle
+            parts.endPath = parts.middle + '.' + parts.end
+            about.notAble = true
+            about.hasMid = true
+            about.hasPath = true
+            about.onlyHost = false
+        } else if(count === 2){
+            let check = req.split('/').filter(Boolean)
+            parts.start = check.shift()
+            parts.end = check.pop()
+            parts.middle = check.join('.')
+            parts.startPath = parts.start + '.' + parts.middle
+            parts.endPath = parts.middle + '.' + parts.end
+            about.notAble = true
+            about.hasMid = false
+            about.hasPath = false
+            about.onlyHost = false
+        } else if(count === 1){
+            let check = req.split('/').filter(Boolean)
+            parts.start = check.shift()
+            parts.end = check.join('.')
+            parts.middle = check.join('.')
+            parts.startPath = parts.start + '.' + parts.middle
+            parts.endPath = parts.middle + '.' + parts.end
+            about.notAble = false
+            about.hasMid = false
+            about.hasPath = false
+            about.onlyHost = true
+        } else {
+            parts.start = null
+            parts.end = null
+            parts.middle = null
+            parts.startPath = null
+            parts.endPath = null
+            about.notAble = null
+            about.hasMid = null
+            about.hasPath = null
+            about.onlyHost = null
+        }
+        return {split, join, count, parts, about}
+    }
 
     fetch.destroy = () => {
         gun = undefined
