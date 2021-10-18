@@ -1,7 +1,7 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
 require('gun/lib/path')
-require('gun/lib/not')
+// require('gun/lib/not')
 require('gun/lib/unset')
 // require('gun/lib/unset')
 // require( 'gun-unset' )
