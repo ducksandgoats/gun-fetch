@@ -25,7 +25,7 @@ module.exports = function makeGunFetch(opts = {}){
     const gun = Gun(opts)
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
-    const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['IS', 'NOT'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
+    const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['REG', 'NOT'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
     const users = {}
     // X-Auth uses GUN_HEADERS.USER
     // X-Gun user all other properties of GUN_HEADERS
