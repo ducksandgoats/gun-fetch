@@ -1,5 +1,6 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
+const {Readable} = require('stream')
 require('gun/lib/path')
 // require('gun/lib/not')
 require('gun/lib/unset')
@@ -29,28 +30,30 @@ module.exports = function makeGunFetch(opts = {}){
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
     const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['REG'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
     const users = {}
-    // X-Auth uses GUN_HEADER.USER
-    // X-Gun user all other properties of GUN_HEADER
+    // X-Auth uses GUN_HEADERS.USER
+    // X-Gun user all other properties of GUN_HEADERS
 
     const fetch = makeFetch(async request => {
 
-        if(request.url.includes(' ')){
-            return new Error('gun url can not contain spaces')
-        }
+        // if(request.url.includes(' ')){
+        //     return new Error('gun url can not contain spaces')
+        // }
 
-        const {
-            url,
-            method,
-            headers,
-            body
-          } = request
-          
+        if(request.body !== null){
+            // request.body = await getBody(request.body)
+            try {
+                // request.body = JSON.parse(request.body)
+                request.body = JSON.parse(await getBody(request.body))
+            } catch (error) {
+                console.log(error)
+                return {statusCode: 400, headers: {}, data: [JSON.stringify(error)]}
+            }
+        }
+        
+        const {url, method, headers, body} = request
+
           try {
-            const {
-                hostname,
-                pathname,
-                protocol
-              } = new URL(url)
+            const {hostname, pathname, protocol} = new URL(url)
 
               if(protocol !== 'gun:'){
                   return new Error('invalid protocol, must be gun:')
@@ -58,9 +61,7 @@ module.exports = function makeGunFetch(opts = {}){
                   return {statusCode: 400, headers: {}, data: ['Error with Method']}
               } else if(!headers || !headers['x-gun-fig'] || !headers['x-gun-func']){
                   return {statusCode: 400, headers: {}, data: ['Error with Headers']}
-              }
-              
-              if(!hostname){
+              } else if(!hostname){
                   return {statusCode: 400, headers: {}, data: ['Error with Hostname']}
               }
 
@@ -105,13 +106,14 @@ module.exports = function makeGunFetch(opts = {}){
                     query = req.parts.start
                 }
                 
-                let res = {statusCode: 0, headers: {}, data: null}
 
               if(method === SUPPORTED_METHODS[0]){
 
                   /* 
                   handle get request with headers, if X-Gun header is NOT, then not method will be used
                   */
+                  let res = {statusCode: 0, headers: {}, data: null}
+
                  if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.GET.includes(headers['x-gun-func'])){
                     return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                  }
@@ -130,18 +132,24 @@ module.exports = function makeGunFetch(opts = {}){
                     }
                   }
 
+                  return res
+
               } else if(method === SUPPORTED_METHODS[1]){
 
                 /*
                 handle put request with headers, if X-Gun header is SET, then set method will be used
                 */
+                let res = {statusCode: 0, headers: {}, data: null}
+
                 if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.PUT.includes(headers['x-gun-func'])){
                     return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                  }
 
-                 if(headers['x-gun'] === GUN_HEADER.PUT[0]){
+                 if(headers['x-gun-func'] === GUN_HEADERS.PUT[0]){
                     let mainData = await new Promise((resolve) => {
-                        query.put(body).once(found => {resolve(found)})
+                        query.put(body).once(found => {
+                            resolve(found)
+                        })
                     })
                     
                     res.statusCode = 200
@@ -152,7 +160,7 @@ module.exports = function makeGunFetch(opts = {}){
                     } else {
                         res.headers = {}
                     }
-                 } else if(headers['x-gun'] === GUN_HEADER.PUT[1]){
+                 } else if(headers['x-gun-func'] === GUN_HEADERS.PUT[1]){
                     let mainData = await new Promise((resolve) => {
                         query.set(body).once(found => {resolve(found)})
                     })
@@ -165,7 +173,7 @@ module.exports = function makeGunFetch(opts = {}){
                     } else {
                         res.headers = {}
                     }
-                 } else if(headers['x-gun'] === GUN_HEADER.PUT[2]){
+                 } else if(headers['x-gun-func'] === GUN_HEADERS.PUT[2]){
                     if(!query.match(/^[0-9a-zA-Z]+$/)){
                         return {statusCode: 400, headers: {}, data: ['Error with Alias']}
                     }
@@ -187,7 +195,7 @@ module.exports = function makeGunFetch(opts = {}){
                       } else {
                           res.headers = {}
                       }
-                 } else if(headers['x-gun'] === GUN_HEADER.PUT[3]){
+                 } else if(headers['x-gun-func'] === GUN_HEADERS.PUT[3]){
                     if(!query.match(/^[0-9a-zA-Z]+$/)){
                         return {statusCode: 400, headers: {}, data: ['Error with Alias']}
                     }
@@ -217,11 +225,15 @@ module.exports = function makeGunFetch(opts = {}){
                       }
                  }
 
+                 return res
+
               } else if(method === SUPPORTED_METHODS[2]){
 
                 /*
                 handle delete request with headers, if X-Gun header is UNSET, then unset method will be used
                 */
+                let res = {statusCode: 0, headers: {}, data: null}
+
                 if(!GUN_HEADERS.TYPE.includes(headers['x-gun-fig']) || !GUN_HEADERS.DELETE.includes(headers['x-gun-func'])){
                     return {statusCode: 400, headers: {}, data: ['Error with Headers']}
                  }
@@ -239,7 +251,7 @@ module.exports = function makeGunFetch(opts = {}){
                     } else {
                         res.headers = {}
                     }
-                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[1]){
+                  } else if(headers['x-gun-func'] === GUN_HEADERS.DELETE[1]){
                         let mainData = await new Promise((resolve) => {
                             query.unset(body).once(found => {resolve(found)})
                         })
@@ -252,7 +264,7 @@ module.exports = function makeGunFetch(opts = {}){
                         } else {
                             res.headers = {}
                         }
-                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[2]){
+                  } else if(headers['x-gun-func'] === GUN_HEADERS.DELETE[2]){
                         let mainData = await new Promise((resolve) => {
                             if(!users[query]){
                                 resolve({done: 'User is not logged in'})
@@ -271,7 +283,7 @@ module.exports = function makeGunFetch(opts = {}){
                         } else {
                             res.headers = {}
                         }
-                  } else if(headers['x-gun'] === GUN_HEADER.DELETE[3]){
+                  } else if(headers['x-gun-func'] === GUN_HEADERS.DELETE[3]){
                       // work in progress
                         let mainData = await new Promise((resolve) => {
                             if(!users[query]){
@@ -292,8 +304,10 @@ module.exports = function makeGunFetch(opts = {}){
                             res.headers = {}
                         }
                   }
+
+                  return res
                   // UNSET is not working for now, must be fixed
-                  /* if(headers['x-gun'] === GUN_HEADER.DELETE[0]){
+                  /* if(headers['x-gun'] === GUN_HEADERS.DELETE[0]){
                         let mainData = await new Promise((resolve) => {
                             gun.path(mainQuery).unset(body).once(found => {resolve(found)})
                         })
@@ -309,14 +323,21 @@ module.exports = function makeGunFetch(opts = {}){
                   } */
               }
 
-              // if everything was done correctly, then res will be sent as a response
-              return res
-
           } catch (e) {
               // there was an error
               return {statusCode: 500, headers, data: [e.stack]}
           }
     })
+
+    async function getBody(body) {
+        let mainData = ''
+      
+        for await (const data of body) {
+          mainData += data
+        }
+      
+        return mainData
+      }
 
     function formatReq(req){
         let split = req.split('/').filter(Boolean)
