@@ -87,7 +87,7 @@ module.exports = function makeGunFetch(opts = {}){
                     }
                 } else if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[2]){
                     if(!users[req.parts.start]){
-                        return {statusCode: 400, headers: {}, data: ['Error with url']}
+                        return {statusCode: 400, headers: {}, data: ['User is not logged in']}
                     } else {
                         if(req.count > 2){
                             query = users[req.parts.start].path(req.parts.endPath)
@@ -102,7 +102,6 @@ module.exports = function makeGunFetch(opts = {}){
                 } else if(headers['x-gun-fig'] === GUN_HEADERS.TYPE[3]){
                     query = req.parts.start
                 }
-                
 
               if(method === SUPPORTED_METHODS[0]){
 
