@@ -128,10 +128,10 @@ module.exports = function makeGunFetch(opts = {}){
                     }
                   } else if(headers['x-gun-func'] === GUN_HEADERS.GET[1]){
                         let mainData = await new Promise((resolve) => {
-                            let checkTime = setTimeout(() => {resolve({not: false})}, 15000)
+                            let checkTime = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 15000)
                             query.not(found => {
                                 clearTimeout(checkTime)
-                                resolve({found, not: true})
+                                resolve({found, not: true, message: 'done, most likely this does not have data'})
                             })
                         })
                         res.statusCode = 200
