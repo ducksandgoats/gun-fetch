@@ -37,13 +37,13 @@ module.exports = function makeGunFetch(opts = {}){
         // }
 
         if(request.body !== null){
-            // request.body = await getBody(request.body)
+            request.body = await getBody(request.body)
             try {
-                // request.body = JSON.parse(request.body)
-                request.body = JSON.parse(await getBody(request.body))
+                request.body = JSON.parse(request.body)
+                // request.body = JSON.parse(await getBody(request.body))
             } catch (error) {
                 console.log(error)
-                return {statusCode: 400, headers: {}, data: [JSON.stringify(error)]}
+                // return {statusCode: 400, headers: {}, data: [JSON.stringify(error)]}
             }
         }
         
