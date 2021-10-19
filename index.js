@@ -1,8 +1,8 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
 require('gun/lib/path')
-// require('gun/lib/not')
-// require('gun/lib/unset')
+require('gun/lib/not')
+require('gun/lib/unset')
 
 // const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 // "https://us-west.xerberus.net/gun",
@@ -25,7 +25,7 @@ module.exports = function makeGunFetch(opts = {}){
     const gun = Gun(opts)
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
-    const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['REG'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
+    const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['IS', 'NOT'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
     const users = {}
     // X-Auth uses GUN_HEADERS.USER
     // X-Gun user all other properties of GUN_HEADERS
@@ -126,6 +126,22 @@ module.exports = function makeGunFetch(opts = {}){
                     } else {
                         res.headers = {}
                     }
+                  } else if(headers['x-gun-func'] === GUN_HEADERS.GET[1]){
+                        let mainData = await new Promise((resolve) => {
+                            let checkTime = setTimeout(() => {resolve({not: false})}, 15000)
+                            query.not(found => {
+                                clearTimeout(checkTime)
+                                resolve({found, not: true})
+                            })
+                        })
+                        res.statusCode = 200
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        } else {
+                            res.headers = {}
+                        }
                   }
 
                   return res
@@ -366,7 +382,8 @@ module.exports = function makeGunFetch(opts = {}){
         } else if(count === 1){
             let check = req.split('/').filter(Boolean)
             parts.start = check.shift()
-            parts.end = check.join('.')
+            // parts.end = check.join('.')
+            parts.end = parts.start
             parts.middle = check.join('.')
             parts.startPath = parts.start + '.' + parts.middle
             parts.endPath = parts.middle + '.' + parts.end
