@@ -40,9 +40,11 @@ module.exports = function makeGunFetch(opts = {}){
         if(request.body !== null){
             request.body = await getBody(request.body)
             try {
+                // parse the body in case the body is a higher type of data that is stringified
                 request.body = JSON.parse(request.body)
                 // request.body = JSON.parse(await getBody(request.body))
             } catch (error) {
+                // if there is an error trying to parse the body, then keep the body as it is
                 console.log(error)
                 // return {statusCode: 400, headers: {}, data: [JSON.stringify(error)]}
             }
