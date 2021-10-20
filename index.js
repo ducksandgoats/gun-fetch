@@ -2,7 +2,8 @@ const makeFetch = require('make-fetch')
 const Gun = require('gun')
 require('gun/lib/path')
 require('gun/lib/not')
-require('gun/lib/unset')
+require('./edits/unset')
+// require('gun/lib/unset')
 
 // const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 // "https://us-west.xerberus.net/gun",
