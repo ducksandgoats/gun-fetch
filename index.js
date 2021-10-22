@@ -23,7 +23,29 @@ const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 
 /* 
 
+changes to be made
+
+
 have only one user, save the user data in a user file or a data folder which holds all the info
+
+_ is path
+@ is alias
+# is key
+for now, gun-fetch will have one user that holds the user credentials in a .env file or a file/folder
+
+GET is get
+PUT is set
+POST is put
+PATCH is unset
+DELETE is delete(put with null)
+
+a special case is a not query, potential way to do it can be a special character in front of the hostname or a special character in the end of the hostname, maybe an OPTIONS HTTP method can be added
+
+user/auth will be added later
+potential ways are
+(alias) or !alias for creating/destroying alias
+[alias] or $alias for adding and subtracting posts for a user that is currently logged in
+
 have one functionality per http method
 
 */
