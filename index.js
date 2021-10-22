@@ -5,25 +5,32 @@ require('gun/lib/not')
 require('./edits/unset')
 // require('gun/lib/unset')
 
-// const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
-// "https://us-west.xerberus.net/gun",
-// "http://gun-matrix.herokuapp.com/gun",
-// "https://gun-ams1.maddiex.wtf:443/gun",
-// "https://gun-sjc1.maddiex.wtf:443/gun",
-// "https://dletta.rig.airfaas.com/gun",
-// "https://mg-gun-manhattan.herokuapp.com/gun",
-// "https://gunmeetingserver.herokuapp.com/gun",
-// "https://e2eec.herokuapp.com/gun",
-// "https://gun-us.herokuapp.com/gun",
-// "https://gun-eu.herokuapp.com/gun",
-// "https://gunjs.herokuapp.com/gun",
-// "https://www.raygun.live/gun",
-// "https://gun-armitro.herokuapp.com/",
-// "https://fire-gun.herokuapp.com/gun"]
+const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
+"https://us-west.xerberus.net/gun",
+"http://gun-matrix.herokuapp.com/gun",
+"https://gun-ams1.maddiex.wtf:443/gun",
+"https://gun-sjc1.maddiex.wtf:443/gun",
+"https://dletta.rig.airfaas.com/gun",
+"https://mg-gun-manhattan.herokuapp.com/gun",
+"https://gunmeetingserver.herokuapp.com/gun",
+"https://e2eec.herokuapp.com/gun",
+"https://gun-us.herokuapp.com/gun",
+"https://gun-eu.herokuapp.com/gun",
+"https://gunjs.herokuapp.com/gun",
+"https://www.raygun.live/gun",
+"https://gun-armitro.herokuapp.com/",
+"https://fire-gun.herokuapp.com/gun"]
+
+/* 
+
+have only one user, save the user data in a user file or a data folder which holds all the info
+have one functionality per http method
+
+*/
 
 module.exports = function makeGunFetch(opts = {}){
 
-    const gun = Gun(opts)
+    const gun = Gun(opts || {peers: LIST_OF_URLS})
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
     const GUN_HEADERS = {TYPE: ['PATH', 'KEY', 'ALIAS', 'USER'], GET: ['REG', 'NOT'], PUT: ['INSERT', 'SET', 'USERCREATE', 'USERAUTH'], DELETE: ['REMOVE', 'UNSET', 'USERLEAVE', 'USERDELETE']}
@@ -42,11 +49,9 @@ module.exports = function makeGunFetch(opts = {}){
             try {
                 // parse the body in case the body is a higher type of data that is stringified
                 request.body = JSON.parse(request.body)
-                // request.body = JSON.parse(await getBody(request.body))
             } catch (error) {
                 // if there is an error trying to parse the body, then keep the body as it is
                 console.log(error)
-                // return {statusCode: 400, headers: {}, data: [JSON.stringify(error)]}
             }
         }
         
