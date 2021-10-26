@@ -1,10 +1,6 @@
-fetch for gundb
-
-this package will go through some changes very soon, examples will be posted once the changes are made
-
 # gun-fetch
 
-Fetch API for GunDB
+Fetch With GunDB
 
 ```javascript
 const fetch = require('gun-fetch')({peers: ["https://gun-manhattan.herokuapp.com/gun",
