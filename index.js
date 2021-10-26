@@ -1,7 +1,7 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
-const fs = require('fs')
-const crypto = require("crypto")
+// const fs = require('fs')
+// const crypto = require("crypto")
 require('gun/lib/path')
 require('gun/lib/not')
 require('./edits/unset')
@@ -106,9 +106,7 @@ module.exports = function makeGunFetch(opts = null){
     // // logout before exit
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '~', '$', '.']
-    const SUPPORTED_OPTIONS = ['!', '$']
-    const SUPPORTED_TUNING = ['-', '+', '=', '&']
+    const SUPPORTED_TYPES = ['_', '*', '~', '$', '!']
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -128,17 +126,23 @@ module.exports = function makeGunFetch(opts = null){
             const {hostname, pathname, protocol} = new URL(url)
 
               if(protocol !== 'gun:'){
+                  console.log('ran 1')
                   return new Error('invalid protocol, must be gun:')
               } else if(!method || !SUPPORTED_METHODS.includes(method)){
+                  console.log('ran 2')
                   return new Error('invalid method, must use methods that are supported')
               } else if(!hostname){
+                  console.log('ran 3')
                   return new Error('invalid resource, must be a resource that is valid')
-              } else if(!SUPPORTED_TYPES.includes(hostname[0])){
+              } else if(!SUPPORTED_TYPES.includes(hostname[0]) && !/[a-zA-Z0-9]/.test(hostname)){
+                  console.log('ran 4')
                   return new Error('invalid query, must be a supported query')
-              } else if(hostname[0] === SUPPORTED_TYPES[4] && !SUPPORTED_OPTIONS.includes(hostname[1])){
-                  return new Error('invalid option, must be a supported option')
-              } else if(hostname[0] === SUPPORTED_TYPES[4] && hostname[1] === SUPPORTED_OPTIONS[1] && !SUPPORTED_TUNING.includes(hostname[2])){
-                  return new Error('invalid tuning, must be a valid tuning')
+              } else if(hostname[0] === SUPPORTED_TYPES[3] && !users[hostname.replace(hostname[0], '')]){
+                  console.log('ran 5')
+                return new Error('invalid user, must be a valid user')
+              } else if(hostname[0] === SUPPORTED_TYPES[4] && !['_', '*', '~', '$'].includes(hostname[1])){
+                  console.log('ran 6')
+                return new Error('invalid option, must be a supported option')
               }
 
               let req = formatReq(`${hostname}${pathname}`, method)
@@ -155,132 +159,84 @@ module.exports = function makeGunFetch(opts = null){
                       query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
                       break
                   case '$':
-                      query = req.multiple ? user.get(req.host).path(req.path) : user.get(req.host)
+                      query = req.multiple ? users[req.host].path(req.path) : users[req.host]
                       break
-
-                      // options
-                  case '.':
-                      if(req.queryOption === '!'){
-                          query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
-                      } else if(req.queryOption === '$'){
-                          query = req.host
-                      }
+                  case '!':
+                    if(req.queryOption === '_'){
+                        query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
+                    } else if(req.queryOption === '*'){
+                        query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
+                    } else if(req.queryOption === '~'){
+                        query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
+                    } else if(req.queryOption === '$'){
+                        query = req.multiple ? users[req.host].path(req.path) : users[req.host]
+                    }
                       break
-                      // options
-
+                    // case '':
+                    //     break
+                    default:
+                        query = req.host
+                        break
               }
 
               let res = {statusCode: 0, headers: {}, data: null}
               switch (req.queryMethod) {
+                  
                 case 'GET': {
-                      let mainData = await new Promise((resolve) => {
-                        query.once(found => {resolve(found)})
-                    })
-                  res.statusCode = 200
-                  res.headers = {}
-                  res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                  if(res.data.length){
-                      res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                  }
-                  break
-                }
-                
-                case 'PUT': {
-                    let mainData = await new Promise((resolve) => {
-                        query.put(body).once(found => {
-                            resolve(found)
+                    let mainData = null
+                    if(req.queryType){
+                        mainData = await new Promise((resolve) => {
+                            query.once(found => {resolve(found)})
                         })
-                    })
-                    res.statusCode = 200
-                    res.headers = {}
-                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(res.data.length){
-                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    }
-                    break
-                }
-
-                case 'DELETE': {
-                    let mainData = await new Promise((resolve) => {
-                        query.put(null).once(found => {resolve(found)})
-                    })
-                    
-                    res.statusCode = 200
-                    res.headers = {}
-                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(res.data.length){
-                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    }
-                    break
-                }
-
-                case 'POST': {
-                    let mainData = await new Promise((resolve) => {
-                        query.set(body).once(found => {resolve(found)})
-                    })
-                    
-                    res.statusCode = 200
-                    res.headers = {}
-                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(res.data.length){
-                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    }
-                    break
-                }
-
-                case 'PATCH': {
-                    let mainData = await new Promise((resolve) => {
-                        query.unset(body).once(found => {resolve(found)})
-                    })
-                    
-                    res.statusCode = 200
-                    res.headers = {}
-                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(res.data.length){
-                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    }
-                    break
-                }
-
-                case 'OPTIONS': {
-                    if(req.queryOption === '!'){
-                        let checkClear = null
-
-                        let mainData = await new Promise((resolve) => {
-                            checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
-                            query.not(found => {
-                                resolve({found, not: true, message: 'done, most likely this does not have data'})
-                            })
-                        })
-
-                        clearTimeout(checkClear)
-
+                      res.statusCode = 200
+                      res.headers = {}
+                      res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                      if(res.data.length){
+                          res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                      }
+                    } else {
+                        mainData = null
+                        if(!users[query]){
+                            mainData = {err: 'User is not logged in'}
+                        } else {
+                            mainData = users[query]
+                        }
                         res.statusCode = 200
                         res.headers = {}
                         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
                         if(res.data.length){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
-                    } else if(req.queryOption === '$'){
-                        if(req.queryTuning === '-'){
-                            if(!users[query]){
-                                return {statusCode: 400, headers: {}, data: [JSON.stringify({message: 'User is not logged in'})]}
-                            }
-                            users[query].leave()
-                            delete users[query]
-                            let mainData = {message: 'User has been logged out'}
-                            res.statusCode = 200
+                    }
+                  break
+                }
+                
+                case 'PUT': {
+                    let mainData = null
+                    if(req.queryType){
+                        mainData = await new Promise((resolve) => {
+                            query.put(body).once(found => {
+                                resolve(found)
+                            })
+                        })
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    } else {
+                        if(users[query]){
+                            mainData = {err: 'User is currently logged in'}
+                            res.statusCode = 400
                             res.headers = {}
                             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
-                        } else if(req.queryTuning === '+'){
-                            if(users[query]){
-                                return {statusCode: 400, headers: {}, data: [JSON.stringify({message: 'User is already logged in'})]}
-                            }
+                        } else {
                             users[query] = gun.user()
-                            let mainData = await new Promise((resolve) => {
+                            mainData = await new Promise((resolve) => {
                                 users[query].auth(query, body, ack => {
                                     resolve(ack)
                                 })
@@ -298,31 +254,102 @@ module.exports = function makeGunFetch(opts = null){
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
-                        } else if(req.queryTuning === '='){
-                            let mainData = await new Promise((resolve) => {
-                                gun.user().delete(query, body, ack => {
-                                    resolve(ack)
-                                })
+                        }
+                    }
+                    break
+                }
+
+                case 'DELETE': {
+                    let mainData = null
+                    if(req.queryType){
+                        mainData = await new Promise((resolve) => {
+                            query.unset(body).once(found => {resolve(found)})
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    } else {
+                        mainData = await new Promise((resolve) => {
+                            gun.user().delete(query, body, ack => {
+                                resolve(ack)
                             })
+                        })
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    }
+                    break
+                }
+
+                case 'POST': {
+                    let mainData = null
+                    if(req.queryType){
+                        mainData = await new Promise((resolve) => {
+                            query.set(body).once(found => {resolve(found)})
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    } else {
+                        mainData = await new Promise((resolve) => {
+                            gun.user().create(query, body, ack => {
+                                resolve(ack)
+                            })
+                        })
+                        if(mainData.err){
+                            res.statusCode = 400
+                            res.headers = {}
+                        } else {
                             res.statusCode = 200
+                            res.headers = {}
+                        }
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    }
+                    break
+                }
+
+                case 'PATCH': {
+                    let mainData = null
+                    if(req.queryType){
+                        mainData = await new Promise((resolve) => {
+                            query.put(null).once(found => {resolve(found)})
+                        })
+                        
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    } else {
+                        if(!users[query]){
+                            mainData = {message: 'User is not logged in'}
+                            res.statusCode = 400
                             res.headers = {}
                             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
-                        } else if(req.queryTuning === '&'){
-                            let mainData = await new Promise((resolve) => {
-                                gun.user().create(query, body, ack => {
-                                    resolve(ack)
-                                })
-                            })
-                            if(mainData.err){
-                                res.statusCode = 400
-                                res.headers = {}
-                            } else {
-                                res.statusCode = 200
-                                res.headers = {}
-                            }
+                        } else {
+                            users[query].leave()
+                            delete users[query]
+                            mainData = {message: 'User has been logged out'}
+                            res.statusCode = 200
+                            res.headers = {}
                             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
@@ -331,6 +358,28 @@ module.exports = function makeGunFetch(opts = null){
                     }
                     break
                 }
+
+                case 'OPTIONS': {
+                    let checkClear = null
+
+                    let mainData = await new Promise((resolve) => {
+                        checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
+                        query.not(found => {
+                            resolve({found, not: true, message: 'done, most likely this does not have data'})
+                        })
+                    })
+
+                    clearTimeout(checkClear)
+
+                    res.statusCode = 200
+                    res.headers = {}
+                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                    if(res.data.length){
+                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                    }
+                    break
+                }
+
               }
               return res
 
@@ -357,14 +406,12 @@ module.exports = function makeGunFetch(opts = null){
         let multiple = count > 1 ? true : false
         let host = split.shift()
         let path = split.length ? split.join('.') : null
-        let queryType = host[0]
+        let queryType = SUPPORTED_TYPES.includes(host[0]) ? host[0] : ''
         host = host.replace(queryType, '')
         let queryOption = queryType === SUPPORTED_TYPES[4] ? host[0] : ''
         host = host.replace(queryOption, '')
-        let queryTuning = queryOption === '$' ? host[0] : ''
-        host.replace(queryTuning, '')
         let queryMethod = method
-        return {split, join, count, multiple, host, path, queryType, queryOption, queryTuning, queryMethod}
+        return {split, join, count, multiple, host, path, queryType, queryOption, queryMethod}
     }
 
     fetch.destroy = () => {
