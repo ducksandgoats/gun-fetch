@@ -23,7 +23,7 @@ const fetch = require('gun-fetch')({peers: ["https://gun-manhattan.herokuapp.com
 "https://gun-armitro.herokuapp.com/",
 "https://fire-gun.herokuapp.com/gun"]})
 
-let test = await gunFetch('gun://_hello/test/testing', {method: 'GET'})
+let test = await fetch('gun://_hello/test/testing', {method: 'GET'})
 
 let testText = await test.text()
 
