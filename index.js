@@ -326,7 +326,7 @@ module.exports = function makeGunFetch(opts = null){
                     let mainData = null
                     if(req.queryType){
                         mainData = await new Promise((resolve) => {
-                            query.put(null).once(found => {resolve(found)})
+                            query.put(body).once(found => {resolve(found)})
                         })
                         
                         res.statusCode = 200
