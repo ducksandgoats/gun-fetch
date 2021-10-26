@@ -56,34 +56,34 @@ module.exports = function makeGunFetch(opts = null){
 
     const gun = Gun(opts || {peers: LIST_OF_URLS})
 
-    let user = null
+    // let user = null
 
-    if(!fs.existsSync('./data')){
-        fs.mkdirSync('./data')
-        fs.writeFileSync('./data/user.txt', crypto.randomBytes(8).toString('hex'))
-        fs.writeFileSync('./data/pass.txt', crypto.randomBytes(8).toString('hex'))
-        gun.user().create(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), ack => {
-            if(ack.err){console.log(ack.err)} else {console.log(ack.pub)}
-            user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
-                if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
-            })
-        })
-    } else {
-        if(!fs.existsSync('./data/user.txt') || !fs.existsSync('./data/pass.txt')){
-            fs.writeFileSync('./data/user.txt', crypto.randomBytes(8).toString('hex'))
-            fs.writeFileSync('./data/pass.txt', crypto.randomBytes(8).toString('hex'))
-            gun.user().create(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), ack => {
-                if(ack.err){console.log(ack.err)} else {console.log(ack.pub)}
-                user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
-                    if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
-                })
-            })
-        } else {
-            user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
-                if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
-            })
-        }
-    }
+    // if(!fs.existsSync('./data')){
+    //     fs.mkdirSync('./data')
+    //     fs.writeFileSync('./data/user.txt', crypto.randomBytes(8).toString('hex'))
+    //     fs.writeFileSync('./data/pass.txt', crypto.randomBytes(8).toString('hex'))
+    //     gun.user().create(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), ack => {
+    //         if(ack.err){console.log(ack.err)} else {console.log(ack.pub)}
+    //         user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
+    //             if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
+    //         })
+    //     })
+    // } else {
+    //     if(!fs.existsSync('./data/user.txt') || !fs.existsSync('./data/pass.txt')){
+    //         fs.writeFileSync('./data/user.txt', crypto.randomBytes(8).toString('hex'))
+    //         fs.writeFileSync('./data/pass.txt', crypto.randomBytes(8).toString('hex'))
+    //         gun.user().create(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), ack => {
+    //             if(ack.err){console.log(ack.err)} else {console.log(ack.pub)}
+    //             user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
+    //                 if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
+    //             })
+    //         })
+    //     } else {
+    //         user = gun.user().auth(fs.readFileSync('./data/user.txt').toString('utf-8'), fs.readFileSync('./data/pass.txt').toString('utf-8'), authen => {
+    //             if(authen.err){console.log(authen.err)} else {console.log(authen.soul)}
+    //         })
+    //     }
+    // }
     
     // // must find out if there is benefit with logging out before exiting before it is added
     // // logout before exit
@@ -108,6 +108,8 @@ module.exports = function makeGunFetch(opts = null){
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
     const SUPPORTED_TYPES = ['_', '*', '~', '$', '.']
     const SUPPORTED_OPTIONS = ['!', '$']
+    const SUPPORTED_TUNING = ['-', '+', '=', '&']
+    const users = {}
 
     const fetch = makeFetch(async request => {
 
@@ -135,6 +137,8 @@ module.exports = function makeGunFetch(opts = null){
                   return new Error('invalid query, must be a supported query')
               } else if(hostname[0] === SUPPORTED_TYPES[4] && !SUPPORTED_OPTIONS.includes(hostname[1])){
                   return new Error('invalid option, must be a supported option')
+              } else if(hostname[0] === SUPPORTED_TYPES[4] && hostname[1] === SUPPORTED_OPTIONS[1] && !SUPPORTED_TUNING.includes(hostname[2])){
+                  return new Error('invalid tuning, must be a valid tuning')
               }
 
               let req = formatReq(`${hostname}${pathname}`, method)
@@ -159,7 +163,7 @@ module.exports = function makeGunFetch(opts = null){
                       if(req.queryOption === '!'){
                           query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
                       } else if(req.queryOption === '$'){
-                          query = user
+                          query = req.host
                       }
                       break
                       // options
@@ -258,15 +262,71 @@ module.exports = function makeGunFetch(opts = null){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     } else if(req.queryOption === '$'){
-                        let mainData = await new Promise((resolve) => {
-                            query.once(found => {resolve(found)})
-                        })
-                        
-                        res.statusCode = 200
-                        res.headers = {}
-                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(res.data.length){
-                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        if(req.queryTuning === '-'){
+                            if(!users[query]){
+                                return {statusCode: 400, headers: {}, data: [JSON.stringify({message: 'User is not logged in'})]}
+                            }
+                            users[query].leave()
+                            delete users[query]
+                            let mainData = {message: 'User has been logged out'}
+                            res.statusCode = 200
+                            res.headers = {}
+                            res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                            if(res.data.length){
+                                res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            }
+                        } else if(req.queryTuning === '+'){
+                            if(users[query]){
+                                return {statusCode: 400, headers: {}, data: [JSON.stringify({message: 'User is already logged in'})]}
+                            }
+                            users[query] = gun.user()
+                            let mainData = await new Promise((resolve) => {
+                                users[query].auth(query, body, ack => {
+                                    resolve(ack)
+                                })
+                            })
+                            if(mainData.err){
+                                users[query].leave()
+                                delete users[query]
+                                res.statusCode = 400
+                                res.headers = {}
+                            } else {
+                                res.statusCode = 200
+                                res.headers = {}
+                            }
+                            res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                            if(res.data.length){
+                                res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            }
+                        } else if(req.queryTuning === '='){
+                            let mainData = await new Promise((resolve) => {
+                                gun.user().delete(query, body, ack => {
+                                    resolve(ack)
+                                })
+                            })
+                            res.statusCode = 200
+                            res.headers = {}
+                            res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                            if(res.data.length){
+                                res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            }
+                        } else if(req.queryTuning === '&'){
+                            let mainData = await new Promise((resolve) => {
+                                gun.user().create(query, body, ack => {
+                                    resolve(ack)
+                                })
+                            })
+                            if(mainData.err){
+                                res.statusCode = 400
+                                res.headers = {}
+                            } else {
+                                res.statusCode = 200
+                                res.headers = {}
+                            }
+                            res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                            if(res.data.length){
+                                res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            }
                         }
                     }
                     break
@@ -301,8 +361,10 @@ module.exports = function makeGunFetch(opts = null){
         host = host.replace(queryType, '')
         let queryOption = queryType === SUPPORTED_TYPES[4] ? host[0] : ''
         host = host.replace(queryOption, '')
+        let queryTuning = queryOption === '$' ? host[0] : ''
+        host.replace(queryTuning, '')
         let queryMethod = method
-        return {split, join, count, multiple, host, path, queryType, queryOption, queryMethod}
+        return {split, join, count, multiple, host, path, queryType, queryOption, queryTuning, queryMethod}
     }
 
     fetch.destroy = () => {
