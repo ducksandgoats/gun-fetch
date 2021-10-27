@@ -138,7 +138,7 @@ module.exports = function makeGunFetch(opts = null){
               } else if(SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])){
                   console.log('ran 5')
                   return new Error('invalid query, must be a valid query')
-              } else if(!SUPPORTED_TYPES.includes(hostname[0]) && !/[a-zA-Z0-9]/.test(hostname) && SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])){
+              } else if((!SUPPORTED_TYPES.includes(hostname[0]) && !SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])) && (!/[a-zA-Z0-9]/.test(hostname) || !users[hostname])){
                   console.log('ran 4')
                   return new Error('invalid query, must be a supported query')
               } else if(hostname[0] === SUPPORTED_TYPES[4] && !['_', '*', '~'].includes(hostname[1])){
@@ -198,8 +198,9 @@ module.exports = function makeGunFetch(opts = null){
                         if(!users[query]){
                             mainData = {err: 'User is not logged in'}
                         } else {
-                            mainData = users[query]
+                            mainData = {user: query + ' is logged in'}
                         }
+
                         res.statusCode = 200
                         res.headers = {}
                         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
