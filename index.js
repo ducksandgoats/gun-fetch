@@ -136,6 +136,7 @@ module.exports = function makeGunFetch(opts = null){
                   console.log('ran 3')
                   return new Error('invalid resource, must be a resource that is valid')
               } else if(SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])){
+                  console.log('ran 5')
                   return new Error('invalid query, must be a valid query')
               } else if(!SUPPORTED_TYPES.includes(hostname[0]) && !/[a-zA-Z0-9]/.test(hostname) && SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])){
                   console.log('ran 4')
@@ -146,7 +147,7 @@ module.exports = function makeGunFetch(opts = null){
               }
 
               let req = formatReq(`${hostname}${pathname}`, method, protocol)
-            //   console.log(req)
+            //   console.log(req, body)
               let query = null
               if(req.queryType){
                 switch (req.queryType) {
@@ -236,9 +237,14 @@ module.exports = function makeGunFetch(opts = null){
                             users[query] = gun.user()
                             mainData = await new Promise((resolve) => {
                                 users[query].auth(query, body, ack => {
-                                    resolve(ack)
+                                    if(ack.err){
+                                        resolve(ack)
+                                    } else {
+                                        resolve({soul: ack.soul})
+                                    }
                                 })
                             })
+
                             if(mainData.err){
                                 users[query].leave()
                                 delete users[query]
@@ -248,6 +254,7 @@ module.exports = function makeGunFetch(opts = null){
                                 res.statusCode = 200
                                 res.headers = {}
                             }
+
                             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
