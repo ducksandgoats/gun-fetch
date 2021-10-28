@@ -106,8 +106,7 @@ module.exports = function makeGunFetch(opts = null){
     // // logout before exit
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '~', '!']
-    const SUPPORTED_ACTIONS = ['.']
+    const SUPPORTED_TYPES = ['_', '*', '~', '$', '!']
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -126,22 +125,13 @@ module.exports = function makeGunFetch(opts = null){
           try {
             const {hostname, pathname, protocol} = new URL(url)
 
-              if(protocol !== 'gun:'){
-                  console.log('ran 1')
-                  return new Error('invalid protocol, must be gun:')
-              } else if(!method || !SUPPORTED_METHODS.includes(method)){
+              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)){
                   console.log('ran 2')
                   return new Error('invalid method, must use methods that are supported')
-              } else if(!hostname){
+              } else if(!hostname || hostname.length < 3 || !/^[a-zA-Z0-9_*~$!]+$/.test(hostname) || !/^[a-zA-Z0-9]+$/.test(hostname.slice(2))){
                   console.log('ran 3')
                   return new Error('invalid resource, must be a resource that is valid')
-              } else if(SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])){
-                  console.log('ran 5')
-                  return new Error('invalid query, must be a valid query')
-              } else if((!SUPPORTED_TYPES.includes(hostname[0]) && !SUPPORTED_ACTIONS.includes(hostname[hostname.length - 1])) && (!/[a-zA-Z0-9]/.test(hostname) || !users[hostname])){
-                  console.log('ran 4')
-                  return new Error('invalid query, must be a supported query')
-              } else if(hostname[0] === SUPPORTED_TYPES[4] && !['_', '*', '~'].includes(hostname[1])){
+              } else if(hostname[0] === SUPPORTED_TYPES[4] && !['_', '*', '~', '$'].includes(hostname[1])){
                   console.log('ran 5')
                 return new Error('invalid option, must be a supported option')
               }
@@ -149,33 +139,33 @@ module.exports = function makeGunFetch(opts = null){
               let req = formatReq(`${hostname}${pathname}`, method, protocol)
             //   console.log(req, body)
               let query = null
-              if(req.queryType){
-                switch (req.queryType) {
-                    case '_':
-                        query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
-                        break
-                    case '*':
-                        query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
-                        break
-                    case '~':
-                        query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
-                        break
-                    case '!':
-                      if(req.queryOption === '_'){
-                          query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
-                      } else if(req.queryOption === '*'){
-                          query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
-                      } else if(req.queryOption === '~'){
-                          query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
-                      } else if(req.queryOption === '$'){
-                          query = req.multiple ? users[req.host].path(req.path) : users[req.host]
-                      }
-                        break
+              switch (req.queryType) {
+                case '_':
+                    query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
+                    break
+                case '*':
+                    query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
+                    break
+                case '~':
+                    query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
+                    break
+                case '$':
+                    query = req.multiple ? users[req.host].path(req.path) : users[req.host]
+                    break
+                case '!':
+                  if(req.queryOption === '_'){
+                      query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
+                  } else if(req.queryOption === '*'){
+                      query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
+                  } else if(req.queryOption === '~'){
+                      query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
+                  } else if(req.queryOption === '$'){
+                      query = req.multiple ? users[req.host].path(req.path) : users[req.host]
                   }
-              } else if(req.queryUser){
-                  query = req.multiple ? users[req.host].path(req.path) : users[req.host]
-              } else if(req.queryAction){
-                  query = req.host
+                    break
+                default:
+                    query = req.host
+                    break
               }
 
               let res = {statusCode: 0, headers: {}, data: null}
@@ -366,22 +356,32 @@ module.exports = function makeGunFetch(opts = null){
                 }
 
                 case 'OPTIONS': {
-                    let checkClear = null
+                    if(req.mainQuery){
+                        let checkClear = null
 
-                    let mainData = await new Promise((resolve) => {
-                        checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
-                        query.not(found => {
-                            resolve({found, not: true, message: 'done, most likely this does not have data'})
+                        let mainData = await new Promise((resolve) => {
+                            checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
+                            query.not(found => {
+                                resolve({found, not: true, message: 'done, most likely this does not have data'})
+                            })
                         })
-                    })
-
-                    clearTimeout(checkClear)
-
-                    res.statusCode = 200
-                    res.headers = {}
-                    res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                    if(res.data.length){
-                        res.headers['Content-Type'] = 'application/json; charset=utf-8'
+    
+                        clearTimeout(checkClear)
+    
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
+                    } else {
+                        let mainData = {done: 'Hello ' + query}
+                        res.statusCode = 200
+                        res.headers = {}
+                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        if(res.data.length){
+                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        }
                     }
                     break
                 }
@@ -416,18 +416,16 @@ module.exports = function makeGunFetch(opts = null){
         host = host.replace(queryType, '')
         let queryOption = queryType === SUPPORTED_TYPES[4] ? host[0] : ''
         host = host.replace(queryOption, '')
-        let queryAction = SUPPORTED_ACTIONS.includes(host[host.length - 1]) ? host[host.length - 1] : ''
-        host = host.replace(queryAction, '')
-        let queryUser = !queryType && !queryAction ? host : ''
+        let queryUser = queryType ? '' : host
         let mainQuery = null
-        if(queryType || queryUser){
+        if(queryType){
             mainQuery = true
-        } else if(queryAction){
+        } else {
             mainQuery = false
         }
         let queryMethod = method
         let queryProtocol = protocol
-        return {split, join, count, multiple, host, path, queryType, queryOption, queryUser, queryAction, mainQuery, queryMethod, queryProtocol}
+        return {split, join, count, multiple, host, path, queryType, queryOption, queryUser, mainQuery, queryMethod, queryProtocol}
     }
 
     fetch.destroy = () => {
