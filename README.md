@@ -52,6 +52,7 @@ fetch('gun://someUserAlias', {method: 'GET'}) // if you are logged in as someUse
 
 ### usage
 x = special character
+
 xsomething - as you can see there is only one special character, it is the first character, this is a regular query, x can be the following(_, *, ~, $, !)
 
 xxsomething - there are two special character, this is an options/not query, first x is ! and the second x is the following(_, *, ~, $)
