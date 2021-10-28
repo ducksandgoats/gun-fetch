@@ -50,8 +50,13 @@ if you use gun-fetch without a special character as the first letter, then it wi
 fetch('gun://someUserAlias', {method: 'GET'}) // if you are logged in as someUserAlias, gun-fetch will return the someUserAlias user information
 ```
 
-## examples
+### usage
+x = special character
+xsomething - as you can see there is only one special character, it is the first character, this is a regular query, x can be the following(_, *, ~, $, !)
+xxsomething - there are two special character, this is an options/not query, first x is ! and the second x is the following(_, *, ~, $)
+something - there are no special characters here, this is a user creation, deletion, logging in and leaving query, if no special character is user, then you are wanting a user interaction
 
+## examples
 ```javascript
 fetch('gun://_testpath/testing', {method: 'GET'}) // same as gun.get('testpath').get('testing')
 
