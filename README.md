@@ -19,7 +19,7 @@ const fetch = require('gun-fetch')({peers: ["https://gun-manhattan.herokuapp.com
 "https://gun-armitro.herokuapp.com/",
 "https://fire-gun.herokuapp.com/gun"]})
 
-let test = await fetch('gun://_hello/test/testing', {method: 'GET'})
+let test = await fetch('gun://hello/test/testing', {method: 'GET'})
 
 let testText = await test.text()
 
@@ -30,44 +30,38 @@ console.log(testText)
 gun-fetch uses special characters to make specific types of queries
 | Character        | Type           | Example  |
 | ------------- |:-------------:| -----:|
-| _ | path | gun.get('something') |
+| _ | publickey | gun.get('something') |
 | * | alias     |   gun.get('~@someuser') |
-| ~ | public key      |    gun.user('somepublickey') |
-| $ | user      |  gun.user()   |
-| ! | options      |  gun.get('something').not() |
+| ~ | user crud      |  gun.user().get().put().once()   |
+| $ | user interaction     |  gun.user().auth() |
 
-### options/not
-| User Interaction        | Type           | Example  |
-| ------------- |:-------------:| -----:|
-| _ | path/not | gun.get('something').not() |
-| * | alias/not     |   gun.get('~@somealias').not() |
-| ~ | publickey/not | gun.user('publickey').not()|
-| $ | user/not     |   gun.user().not() |
-
-### users
-if you use gun-fetch without a special character as the first letter, then it will assume you are wanting to have user interaction
+### path
+if you use gun-fetch without a special character, then it will assume you are wanting to make a regular path query
 ```javascript
-fetch('gun://someUserAlias', {method: 'GET'}) // if you are logged in as someUserAlias, gun-fetch will return the someUserAlias user information
+fetch('gun://something', {method: 'GET'}) // gun-fetch will return the result of gun.get('something')
 ```
 
 ### usage
 x = special character
 
-xsomething - as you can see there is only one special character, it is the first character, this is a regular query, x can be the following(_, *, ~, $, !)
+xsomething - as you can see there is only one special character, it is the first character, this is a user query, x can be the following(_, *, ~)
 
-xxsomething - there are two special character, this is an options/not query, first x is ! and the second x is the following(_, *, ~, $)
+somethingx - this is a single special character at the end, this is a user interaction, x is ($)
 
-something - there are no special characters here, this is a user creation, deletion, logging in and leaving query, if no special character is user, then you are wanting a user interaction
+something - there are no special characters here, this is a regular path query
+
+if a query does not have any special characters, you are making a standard path query
+if you have a special character, you are making a user query/interaction
 
 ## examples
 ```javascript
-fetch('gun://_testpath/testing', {method: 'GET'}) // same as gun.get('testpath').get('testing')
+fetch('gun://testpath/testing', {method: 'GET'}) // same as gun.get('testpath').get('testing')
 
 fetch('gun://*testalias/testing', {method: 'GET'}) // same as gun.get('~@testalias').get('testing')
 
-fetch('gun://~testpublickey/testing', {method: 'GET'}) // same as gun.user('testpublickey').get('testing')
+fetch('gun://_testpublickey/testing', {method: 'GET'}) // same as gun.user('testpublickey').get('testing')
 
-fetch('gun://$testuser/testing', {method: 'GET'}) // same as gun.user().get('testing')
+fetch('gun://~testuser/testing', {method: 'GET'}) // same as gun.user().get('testing')
 
-fetch('gun://!_test/testing', {method: 'OPTIONS'}) // ! is the NOT/OPTIONS character, _ is the path character, so this is gun.get('test').get('testing').not(data => {data is not found})
+fetch('gun://test/testing', {method: 'OPTIONS'}) // OPTIONS method is for the NOT query, the result is gun.get('test').get('testing').not(data => {data is not found})
 ```

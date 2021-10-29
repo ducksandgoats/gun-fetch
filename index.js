@@ -106,7 +106,8 @@ module.exports = function makeGunFetch(opts = null){
     // // logout before exit
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '~', '$', '!']
+    const SUPPORTED_TYPES = ['_', '*', '~']
+    const SUPPORTED_ACTION = '$'
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -125,15 +126,9 @@ module.exports = function makeGunFetch(opts = null){
           try {
             const {hostname, pathname, protocol} = new URL(url)
 
-              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)){
-                  console.log('ran 2')
-                  return new Error('invalid method, must use methods that are supported')
-              } else if(!hostname || hostname.length < 3 || !/^[a-zA-Z0-9_*~$!]+$/.test(hostname) || !/^[a-zA-Z0-9]+$/.test(hostname.slice(2))){
+              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || (!hostname || hostname.length < 3) && (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
                   console.log('ran 3')
                   return new Error('invalid resource, must be a resource that is valid')
-              } else if(hostname[0] === SUPPORTED_TYPES[4] && !['_', '*', '~', '$'].includes(hostname[1])){
-                  console.log('ran 5')
-                return new Error('invalid option, must be a supported option')
               }
 
               let req = formatReq(`${hostname}${pathname}`, method, protocol)
@@ -141,30 +136,19 @@ module.exports = function makeGunFetch(opts = null){
               let query = null
               switch (req.queryType) {
                 case '_':
-                    query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
+                    query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
                     break
                 case '*':
                     query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
                     break
                 case '~':
-                    query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
-                    break
-                case '$':
                     query = req.multiple ? users[req.host].path(req.path) : users[req.host]
                     break
-                case '!':
-                  if(req.queryOption === '_'){
-                      query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
-                  } else if(req.queryOption === '*'){
-                      query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
-                  } else if(req.queryOption === '~'){
-                      query = req.multiple ? gun.user(req.host).path(req.path) : gun.user(req.host)
-                  } else if(req.queryOption === '$'){
-                      query = req.multiple ? users[req.host].path(req.path) : users[req.host]
-                  }
+                case '$':
+                    query = req.host
                     break
                 default:
-                    query = req.host
+                    query = req.multiple ? gun.get(req.host).path(req.path) : gun.get(req.host)
                     break
               }
 
@@ -406,26 +390,30 @@ module.exports = function makeGunFetch(opts = null){
       }
 
     function formatReq(req, method, protocol){
-        let split = req.split('/').filter(Boolean)
-        let join = split.join('.')
-        let count = split.length
+        let path = req.split('/').filter(Boolean)
+        let join = path.join('.')
+        let count = path.length
         let multiple = count > 1 ? true : false
-        let host = split.shift()
-        let path = split.length ? split.join('.') : null
-        let queryType = SUPPORTED_TYPES.includes(host[0]) ? host[0] : ''
+        let host = path.shift()
+        let queryType = ''
+        if(SUPPORTED_TYPES.includes(host[0])){
+            queryType = host[0]
+        } else if(SUPPORTED_ACTION === host[host.length - 1]){
+            queryType = host[host.length - 1]
+        }
         host = host.replace(queryType, '')
-        let queryOption = queryType === SUPPORTED_TYPES[4] ? host[0] : ''
-        host = host.replace(queryOption, '')
-        let queryUser = queryType ? '' : host
+        // split = split.map(data => {return data.replace(/[^a-zA-Z0-9]/g, '')})
+        // let path = split.length ? split.join('.') : null
+        path = path.map(data => {return data.replace(/[^a-zA-Z0-9]/g, '')}).join('.')
         let mainQuery = null
-        if(queryType){
+        if(queryType !== SUPPORTED_ACTION){
             mainQuery = true
         } else {
             mainQuery = false
         }
         let queryMethod = method
         let queryProtocol = protocol
-        return {split, join, count, multiple, host, path, queryType, queryOption, queryUser, mainQuery, queryMethod, queryProtocol}
+        return {path, join, count, multiple, host, queryType, mainQuery, queryMethod, queryProtocol}
     }
 
     fetch.destroy = () => {
