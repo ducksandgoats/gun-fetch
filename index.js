@@ -120,13 +120,16 @@ module.exports = function makeGunFetch(opts = null){
                 console.log(error)
             }
         }
+        if(request.method === 'PATCH' && request.body){
+            request.body = null
+        }
 
         const {url, method, headers, body} = request
 
           try {
             const {hostname, pathname, protocol} = new URL(url)
 
-              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || (!hostname || hostname.length < 3) && (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (method === 'PUT' && body) || (!hostname || hostname.length < 3) && (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
                   console.log('ran 3')
                   return new Error('invalid resource, must be a resource that is valid')
               }
@@ -172,7 +175,7 @@ module.exports = function makeGunFetch(opts = null){
                         if(!users[query]){
                             mainData = {err: 'User is not logged in'}
                         } else {
-                            mainData = {user: query + ' is logged in'}
+                            mainData = users[query]
                         }
 
                         res.statusCode = 200
@@ -359,7 +362,12 @@ module.exports = function makeGunFetch(opts = null){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     } else {
-                        let mainData = {done: 'Hello ' + query}
+                        if(!users[query]){
+                            mainData = {err: 'User is not logged in'}
+                        } else {
+                            mainData = {user: query + ' is logged in'}
+                        }
+
                         res.statusCode = 200
                         res.headers = {}
                         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
