@@ -129,8 +129,8 @@ module.exports = function makeGunFetch(opts = null){
           try {
             const {hostname, pathname, protocol} = new URL(url)
 
-              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (method === 'PUT' && body) || (!hostname || hostname.length < 3) && (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
-                  console.log('ran 3')
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (!hostname || hostname.length < 3) || (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
+                  console.log('something wrong with the query')
                   return new Error('invalid resource, must be a resource that is valid')
               }
 
