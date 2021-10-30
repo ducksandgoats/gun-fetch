@@ -79,7 +79,7 @@ GET: read data
 
 PUT: write data, must have body
 
-PATCH: delete data, body(must be a falsey value, null is preferred) is optional, if no body is provided, then body will be turned to null(next update)
+PATCH: delete data, body(must be a falsey value, null is preferred) is optional, if no body is provided, then body will be turned to null
 
 POST: same as PUT, but uses gun.set(), might be removed later on
 
