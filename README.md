@@ -32,8 +32,8 @@ gun-fetch uses special characters to make specific types of queries
 | ------------- |:-------------:| -----:|
 | _ | publickey | gun.get('something') |
 | * | alias     |   gun.get('~@someuser') |
-| ~ | user crud      |  gun.user().get().put().once()   |
-| $ | user interaction     |  gun.user().auth() |
+| $ | user crud      |  gun.user().get().put().once()   |
+| ! | user interaction     |  gun.user().auth() |
 
 ### path
 if you use gun-fetch without a special character, then it will assume you are wanting to make a regular path query
@@ -44,9 +44,9 @@ fetch('gun://something', {method: 'GET'}) // gun-fetch will return the result of
 ### usage
 x = special character
 
-xsomething - as you can see there is only one special character, it is the first character, this is a user query, x can be the following(_, *, ~)
+xsomething - as you can see there is only one special character, it is the first character, this is a user query, x can be the following(_, *, $)
 
-somethingx - this is a single special character at the end, this is a user interaction, x is ($)
+somethingx - this is a single special character at the end, this is a user interaction, x is (!)
 
 something - there are no special characters here, this is a regular path query
 
@@ -57,9 +57,9 @@ if you have a special character, you are making a user query/interaction
 so to recap, here is how using gun-fetch would work
 
 if you want to create/destroy/login/logout as a user, then use the following
-gun://somealiasthing$
+gun://somealiasthing!
 
-$ = special character for user auth, goes at the end of the hostname, password goes in the body as a string the dot in the end is what tells gun-fetch that you are wanting user auth interaction
+! = special character for user auth, goes at the end of the hostname, password goes in the body as a string the dot in the end is what tells gun-fetch that you are wanting user auth interaction
 
 if you want all other queries(not involving authentication), then use the following
 
@@ -69,9 +69,9 @@ gun://_someregularthing - pubkey, _ is the special character > gun.user(someregu
 
 gun://*someregularthing - alias, * is the special character > gun.get(~@someregularthing)
 
-gun://~someregularthing - user session/user currently logged in, ~ is the special character > gun.user().auth().get(someregularthing)
+gun://$someregularthing - user session/user currently logged in, $ is the special character > gun.user().auth().get(someregularthing)
 
-the methods that are used is the following, remember this is how the methods would work without a $ special character at the end of the hostname/alias, $ is the special character for user auth
+the methods that are used is the following, remember this is how the methods would work without a ! special character at the end of the hostname/alias, ! is the special character for user auth
 
 GET, PUT, PATCH, DELETE, POST, OPTIONS
 
@@ -87,7 +87,7 @@ DELETE: same as PATCH, but uses gun.unset(), might be removed later on
 
 OPTIONS: shows if data is NOT there, uses gun.get('something').not()
 
-now we will talk about which methods will be responsible for user auth, assume the url is the following - gun://someAlias$, remember $ is the special character for user auth, and it goes at the end of the hostname/alias
+now we will talk about which methods will be responsible for user auth, assume the url is the following - gun://someAlias!, remember ! is the special character for user auth, and it goes at the end of the hostname/alias
 
 GET: if logged in, returns the user, if not logged in, returns error message
 
@@ -111,7 +111,7 @@ fetch('gun://*testalias/testing', {method: 'GET'}) // same as gun.get('~@testali
 
 fetch('gun://_testpublickey/testing', {method: 'GET'}) // same as gun.user('testpublickey').get('testing')
 
-fetch('gun://~testuser/testing', {method: 'GET'}) // same as gun.user().get('testing')
+fetch('gun://$testuser/testing', {method: 'GET'}) // same as gun.user().get('testing')
 
 fetch('gun://test/testing', {method: 'OPTIONS'}) // OPTIONS method is for the NOT query, the result is gun.get('test').get('testing').not(data => {data is not found})
 ```

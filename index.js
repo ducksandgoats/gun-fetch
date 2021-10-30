@@ -106,8 +106,8 @@ module.exports = function makeGunFetch(opts = null){
     // // logout before exit
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '~']
-    const SUPPORTED_ACTION = '$'
+    const SUPPORTED_TYPES = ['_', '*', '$']
+    const SUPPORTED_ACTION = '!'
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -127,9 +127,10 @@ module.exports = function makeGunFetch(opts = null){
         const {url, method, headers, body} = request
 
           try {
-            const {hostname, pathname, protocol} = new URL(url)
+              url.hostname = decodeURIComponent(url.hostname)
+              const {hostname, pathname, protocol} = new URL(url)
 
-              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (!hostname || hostname.length < 3) || (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*~$]+$/.test(hostname)){
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (!hostname || hostname.length < 3) || (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*$!]+$/.test(hostname)){
                   console.log('something wrong with the query')
                   return new Error('invalid resource, must be a resource that is valid')
               }
@@ -144,10 +145,10 @@ module.exports = function makeGunFetch(opts = null){
                 case '*':
                     query = req.multiple ? gun.get('~@' + req.host).path(req.path) : gun.get('~@' + req.host)
                     break
-                case '~':
+                case '$':
                     query = req.multiple ? users[req.host].path(req.path) : users[req.host]
                     break
-                case '$':
+                case '!':
                     query = req.host
                     break
                 default:
