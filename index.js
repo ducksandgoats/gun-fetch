@@ -109,7 +109,7 @@ module.exports = function makeGunFetch(opts = null){
     const SUPPORTED_TYPES = ['_', '*', '$']
     const SUPPORTED_ACTION = '!'
     const users = {}
-    const hexCoding = opts.hexCoding
+    const hexCoding = opts.hexCoding ? true : false
 
     const fetch = makeFetch(async request => {
 
