@@ -106,10 +106,9 @@ module.exports = function makeGunFetch(opts = null){
     // // logout before exit
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '$']
+    const SUPPORTED_TYPES = ['_', '*', '$', '.']
     const SUPPORTED_ACTION = '!'
     const users = {}
-    const hexCoding = opts.hexCoding ? true : false
 
     const fetch = makeFetch(async request => {
 
@@ -129,7 +128,9 @@ module.exports = function makeGunFetch(opts = null){
 
           try {
               let {hostname, pathname, protocol} = new URL(url)
-              hostname = hexCoding ? Buffer.from(hostname, 'hex').toString() : decodeURIComponent(hostname)
+              if(hostname[0] === SUPPORTED_TYPES[3]){
+                  hostname = Buffer.from(hostname.slice(1), 'hex').toString()
+              }
 
               if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method)) || (!hostname || hostname.length < 3) || (!SUPPORTED_METHODS.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9]+$/.test(hostname)) && !SUPPORTED_TYPES.includes(hostname[0]) && SUPPORTED_ACTION !== hostname[hostname.length - 1] && !/^[a-zA-Z0-9_*$!]+$/.test(hostname)){
                   console.log('something wrong with the query')
