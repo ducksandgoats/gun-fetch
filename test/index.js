@@ -307,7 +307,7 @@ module.exports = function makeGunFetch(opts = null){
         let multiple = count > 1 ? true : false
         let host = path.shift()
         // path = path.map(data => {return decodeURIComponent(data.replace(/[^a-zA-Z0-9]/g, ''))}).join('.')
-        path = path.join('.')
+        path = path.map(data => {return decodeURIComponent(data)}).join('.')
         let makeQuery = null
         let mainQuery = null
         switch (queryType) {
