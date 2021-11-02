@@ -51,7 +51,7 @@ module.exports = function makeGunFetch(opts = null){
               let {hostname, pathname, protocol} = new URL(url)
               hostname = decodeURIComponent(hostname)
 
-              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || !SUPPORTED_TYPES.includes(hostname)){
+              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname.length > 1 || !SUPPORTED_TYPES.includes(hostname)){
                   console.log('something wrong with the query')
                   return new Error('invalid query, must be a valid query')
               }
