@@ -64,7 +64,11 @@ module.exports = function makeGunFetch(opts = null){
                 case 'GET': {
                     let mainData = null
                     if(req.mainQuery){
-                        if(req.queryNot){
+                        if(req.queryReg){
+                            mainData = await new Promise((resolve) => {
+                                req.makeQuery.once(found => {resolve(found)})
+                            })
+                        } else {
                             let checkClear = null
 
                             mainData = await new Promise((resolve) => {
@@ -75,10 +79,6 @@ module.exports = function makeGunFetch(opts = null){
                             })
         
                             clearTimeout(checkClear)
-                        } else {
-                            mainData = await new Promise((resolve) => {
-                                req.makeQuery.once(found => {resolve(found)})
-                            })
                         }
                       res.statusCode = 200
                       res.headers = {}
@@ -343,8 +343,8 @@ module.exports = function makeGunFetch(opts = null){
         }
         let queryMethod = method
         let queryProtocol = protocol
-        let queryNot = search.get('not')
-        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryNot}
+        let queryReg = !search.get('not')
+        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryReg}
     }
 
     fetch.destroy = () => {
