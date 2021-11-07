@@ -28,7 +28,7 @@ module.exports = function makeGunFetch(opts = null){
     const gun = Gun(opts || {peers: LIST_OF_URLS})
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['_', '*', '-', '$', '!']
+    const SUPPORTED_TYPES = ['-', '_', '.']
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -41,22 +41,22 @@ module.exports = function makeGunFetch(opts = null){
                 console.log(error)
             }
         }
-        if(request.method === 'PATCH' && request.body){
-            request.body = null
-        }
+        // if(request.method === 'PATCH' && request.body){
+        //     request.body = null
+        // }
 
         const {url, method, headers, body} = request
 
           try {
-              let {hostname, pathname, protocol} = new URL(url)
-              hostname = decodeURIComponent(hostname)
+              let {hostname, pathname, protocol, searchParams} = new URL(url)
+              hostname = hostname && hostname[0] === SUPPORTED_TYPES[0] ? Buffer.from(hostname.slice(1), 'hex').toString('hex') : hostname
 
-              if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname.length > 1 || !SUPPORTED_TYPES.includes(hostname)){
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || !/^[a-zA-Z0-9_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
                   console.log('something wrong with the query')
                   return new Error('invalid query, must be a valid query')
               }
 
-              let req = formatReq(`${hostname}${pathname}`, method, protocol)
+              let req = formatReq(`${hostname}${pathname}`, method, protocol, searchParams)
 
               let res = {statusCode: 0, headers: {}, data: null}
               switch (req.queryMethod) {
@@ -64,9 +64,22 @@ module.exports = function makeGunFetch(opts = null){
                 case 'GET': {
                     let mainData = null
                     if(req.mainQuery){
-                        mainData = await new Promise((resolve) => {
-                            req.makeQuery.once(found => {resolve(found)})
-                        })
+                        if(req.queryNot){
+                            let checkClear = null
+
+                            mainData = await new Promise((resolve) => {
+                                checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
+                                req.makeQuery.not(found => {
+                                    resolve({found, not: true, message: 'done, most likely this does not have data'})
+                                })
+                            })
+        
+                            clearTimeout(checkClear)
+                        } else {
+                            mainData = await new Promise((resolve) => {
+                                req.makeQuery.once(found => {resolve(found)})
+                            })
+                        }
                       res.statusCode = 200
                       res.headers = {}
                       res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
@@ -74,13 +87,7 @@ module.exports = function makeGunFetch(opts = null){
                           res.headers['Content-Type'] = 'application/json; charset=utf-8'
                       }
                     } else {
-                        mainData = null
-                        if(!users[req.makeQuery]){
-                            mainData = {err: 'User is not logged in'}
-                        } else {
-                            mainData = users[req.makeQuery]
-                        }
-
+                        mainData = {message: 'register a user with the other methods'}
                         res.statusCode = 200
                         res.headers = {}
                         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
@@ -106,7 +113,7 @@ module.exports = function makeGunFetch(opts = null){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     } else {
-                        if(users[req.makeQuery]){
+                        if(users[body.user]){
                             mainData = {err: 'User is currently logged in'}
                             res.statusCode = 400
                             res.headers = {}
@@ -115,9 +122,9 @@ module.exports = function makeGunFetch(opts = null){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
                         } else {
-                            users[req.makeQuery] = gun.user()
+                            users[body.user] = gun.user()
                             mainData = await new Promise((resolve) => {
-                                users[req.makeQuery].auth(query, body, ack => {
+                                users[body.user].auth(body.user, body.pass, ack => {
                                     if(ack.err){
                                         resolve(ack)
                                     } else {
@@ -127,8 +134,8 @@ module.exports = function makeGunFetch(opts = null){
                             })
 
                             if(mainData.err){
-                                users[req.makeQuery].leave()
-                                delete users[req.makeQuery]
+                                users[body.user].leave()
+                                delete users[body.user]
                                 res.statusCode = 400
                                 res.headers = {}
                             } else {
@@ -160,7 +167,7 @@ module.exports = function makeGunFetch(opts = null){
                         }
                     } else {
                         mainData = await new Promise((resolve) => {
-                            gun.user().delete(query, body, ack => {
+                            gun.user().delete(body.user, body.pass, ack => {
                                 resolve(ack)
                             })
                         })
@@ -189,7 +196,7 @@ module.exports = function makeGunFetch(opts = null){
                         }
                     } else {
                         mainData = await new Promise((resolve) => {
-                            gun.user().create(query, body, ack => {
+                            gun.user().create(body.user, body.pass, ack => {
                                 resolve(ack)
                             })
                         })
@@ -222,7 +229,7 @@ module.exports = function makeGunFetch(opts = null){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     } else {
-                        if(!users[req.makeQuery]){
+                        if(!users[body.user]){
                             mainData = {message: 'User is not logged in'}
                             res.statusCode = 400
                             res.headers = {}
@@ -231,8 +238,8 @@ module.exports = function makeGunFetch(opts = null){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
                         } else {
-                            users[req.makeQuery].leave()
-                            delete users[req.makeQuery]
+                            users[body.user].leave()
+                            delete users[body.user]
                             mainData = {message: 'User has been logged out'}
                             res.statusCode = 200
                             res.headers = {}
@@ -300,41 +307,44 @@ module.exports = function makeGunFetch(opts = null){
         return mainData
       }
 
-    function formatReq(req, method, protocol){
+    function formatReq(req, method, protocol, search){
         let path = req.split('/').filter(Boolean)
-        let queryType = path.shift()
         let count = path.length
-        let multiple = count > 1 ? true : false
         let host = path.shift()
+        let queryType = SUPPORTED_TYPES.includes(host[0]) ? host[0] : ''
+        host = host.replace(queryType, '')
+        let multiple = count > 1 ? true : false
         // path = path.map(data => {return decodeURIComponent(data.replace(/[^a-zA-Z0-9]/g, ''))}).join('.')
         path = path.map(data => {return decodeURIComponent(data)}).join('.')
         let makeQuery = null
         let mainQuery = null
         switch (queryType) {
-            case SUPPORTED_TYPES[0]:
-                makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
-                mainQuery = true
-                break
             case SUPPORTED_TYPES[1]:
-                makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
+                if(host.includes('.')){
+                    makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
+                } else {
+                    makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
+                }
                 mainQuery = true
                 break
             case SUPPORTED_TYPES[2]:
-                makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
-                mainQuery = true
+                if(host){
+                    makeQuery = multiple ? users[host].path(path) : users[host]
+                    mainQuery = true
+                } else {
+                    makeQuery = host
+                    mainQuery = false
+                }
                 break
-            case SUPPORTED_TYPES[3]:
-                makeQuery = multiple ? users[host].path(path) : users[host]
+            default:
+                makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
                 mainQuery = true
-                break
-            case SUPPORTED_TYPES[4]:
-                makeQuery = host
-                mainQuery = false
                 break
         }
         let queryMethod = method
         let queryProtocol = protocol
-        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType}
+        let queryNot = search.get('not')
+        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryNot}
     }
 
     fetch.destroy = () => {
