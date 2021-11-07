@@ -49,7 +49,7 @@ module.exports = function makeGunFetch(opts = null){
 
           try {
               let {hostname, pathname, protocol, searchParams} = new URL(url)
-              hostname = hostname && hostname[0] === SUPPORTED_TYPES[0] ? Buffer.from(hostname.slice(1), 'hex').toString('hex') : hostname
+              hostname = hostname && hostname[0] === SUPPORTED_TYPES[0] ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
 
               if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || !/^[a-zA-Z0-9_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
                   console.log('something wrong with the query')
@@ -310,7 +310,7 @@ module.exports = function makeGunFetch(opts = null){
     function formatReq(req, method, protocol, search){
         let path = req.split('/').filter(Boolean)
         let count = path.length
-        let host = path.shift()
+        let host = decodeURIComponent(path.shift())
         let queryType = SUPPORTED_TYPES.includes(host[0]) ? host[0] : ''
         host = host.replace(queryType, '')
         let multiple = count > 1 ? true : false
