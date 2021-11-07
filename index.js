@@ -51,7 +51,7 @@ module.exports = function makeGunFetch(opts = null){
               let {hostname, pathname, protocol, searchParams} = new URL(url)
               hostname = hostname && hostname[0] === SUPPORTED_TYPES[0] ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
 
-              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || !/^[a-zA-Z0-9_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname[0] === SUPPORTED_TYPES[0] || !/^[a-zA-Z0-9-_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
                   console.log('something wrong with the query')
                   return new Error('invalid query, must be a valid query')
               }
