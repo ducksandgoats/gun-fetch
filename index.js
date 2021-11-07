@@ -320,7 +320,7 @@ module.exports = function makeGunFetch(opts = null){
         let mainQuery = null
         switch (queryType) {
             case SUPPORTED_TYPES[1]:
-                if(host.includes('.')){
+                if(host.includes('.') || host.includes('-')){
                     makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
                 } else {
                     makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
