@@ -28,7 +28,7 @@ module.exports = function makeGunFetch(opts = null){
     const gun = Gun(opts || {peers: LIST_OF_URLS})
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    const SUPPORTED_TYPES = ['-', '_', '.']
+    // const SUPPORTED_TYPES = ['-', '_', '.']
     const encodeType = '-'
     const hostType = '_'
     const users = {}
