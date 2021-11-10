@@ -29,6 +29,8 @@ module.exports = function makeGunFetch(opts = null){
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
     const SUPPORTED_TYPES = ['-', '_', '.']
+    const encodeType = '-'
+    const hostType = '_'
     const users = {}
 
     const fetch = makeFetch(async request => {
@@ -49,9 +51,9 @@ module.exports = function makeGunFetch(opts = null){
 
           try {
               let {hostname, pathname, protocol, searchParams} = new URL(url)
-              hostname = hostname && hostname[0] === SUPPORTED_TYPES[0] ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
+              hostname = hostname && hostname[0] === encodeType ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
 
-              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname[0] === SUPPORTED_TYPES[0] || !/^[a-zA-Z0-9-_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
+              if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
                   console.log('something wrong with the query')
                   return new Error('invalid query, must be a valid query')
               }
@@ -311,36 +313,54 @@ module.exports = function makeGunFetch(opts = null){
         let path = req.split('/').filter(Boolean)
         let count = path.length
         let host = decodeURIComponent(path.shift())
-        let queryType = SUPPORTED_TYPES.includes(host[0]) ? host[0] : ''
+        let queryType = host[0] === hostType ? host[0] : ''
         host = host.replace(queryType, '')
         let multiple = count > 1 ? true : false
         // path = path.map(data => {return decodeURIComponent(data.replace(/[^a-zA-Z0-9]/g, ''))}).join('.')
         path = path.map(data => {return decodeURIComponent(data)}).join('.')
         let makeQuery = null
         let mainQuery = null
-        switch (queryType) {
-            case SUPPORTED_TYPES[1]:
+        if(queryType){
+            if(host){
                 if(host.includes('.') || host.includes('-')){
                     makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
-                } else {
+                } else if(users[host]){
+                    makeQuery = multiple ? users[host].path(path) : users[host]
+                } else if(!users[host]){
                     makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
                 }
                 mainQuery = true
-                break
-            case SUPPORTED_TYPES[2]:
-                if(host){
-                    makeQuery = multiple ? users[host].path(path) : users[host]
-                    mainQuery = true
-                } else {
-                    makeQuery = host
-                    mainQuery = false
-                }
-                break
-            default:
-                makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
-                mainQuery = true
-                break
+            } else {
+                makeQuery = host
+                mainQuery = false
+            }
+        } else {
+            makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
+            mainQuery = true
         }
+        // switch (queryType) {
+        //     case SUPPORTED_TYPES[1]:
+        //         if(host.includes('.') || host.includes('-')){
+        //             makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
+        //         } else {
+        //             makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
+        //         }
+        //         mainQuery = true
+        //         break
+        //     case SUPPORTED_TYPES[2]:
+        //         if(host){
+        //             makeQuery = multiple ? users[host].path(path) : users[host]
+        //             mainQuery = true
+        //         } else {
+        //             makeQuery = host
+        //             mainQuery = false
+        //         }
+        //         break
+        //     default:
+        //         makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
+        //         mainQuery = true
+        //         break
+        // }
         let queryMethod = method
         let queryProtocol = protocol
         let queryReg = !search.get('not')
