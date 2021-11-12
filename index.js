@@ -277,7 +277,7 @@ module.exports = function makeGunFetch(opts = null){
         let mainQuery = null
         if(queryType){
             if(host){
-                if(host.includes('.') || host.includes('-')){
+                if(host.includes('.') || host.includes('-') || host.includes('_')){
                     makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
                 } else if(users[host]){
                     makeQuery = multiple ? users[host].path(path) : users[host]
