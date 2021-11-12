@@ -1,11 +1,8 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
-// const fs = require('fs')
-// const crypto = require("crypto")
 require('gun/lib/path')
 require('gun/lib/not')
 require('./edits/unset')
-// require('gun/lib/unset')
 
 const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 "https://us-west.xerberus.net/gun",
@@ -42,9 +39,6 @@ module.exports = function makeGunFetch(opts = null){
                 console.log(error)
             }
         }
-        // if(request.method === 'PATCH' && request.body){
-        //     request.body = null
-        // }
 
         const {url, method, headers, body} = request
 
@@ -257,7 +251,6 @@ module.exports = function makeGunFetch(opts = null){
               return res
 
           } catch (e) {
-              // there was an error
               return {statusCode: 500, headers, data: [e.stack]}
           }
     })
@@ -279,31 +272,9 @@ module.exports = function makeGunFetch(opts = null){
         let queryType = host[0] === hostType ? host[0] : ''
         host = host.replace(queryType, '')
         let multiple = count > 1 ? true : false
-        // path = path.map(data => {return decodeURIComponent(data.replace(/[^a-zA-Z0-9]/g, ''))}).join('.')
         path = path.map(data => {return decodeURIComponent(data)}).join('.')
         let makeQuery = null
         let mainQuery = null
-        // going for NOT true to squeeze out speed, impractical though
-        /*
-        if(!queryType){
-            makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
-            mainQuery = true
-        } else {
-            if(!host){
-                makeQuery = host
-                mainQuery = false
-            } else {
-                if(host.includes('.') || host.includes('-')){
-                    makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
-                } else if(users[host]){
-                    makeQuery = multiple ? users[host].path(path) : users[host]
-                } else if(!users[host]){
-                    makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
-                }
-                mainQuery = true
-            }
-        }
-        */
         if(queryType){
             if(host){
                 if(host.includes('.') || host.includes('-')){
@@ -322,32 +293,6 @@ module.exports = function makeGunFetch(opts = null){
             makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
             mainQuery = true
         }
-        // switch statement, only here if we need to change back
-        /*
-        switch (queryType) {
-            case SUPPORTED_TYPES[1]:
-                if(host.includes('.') || host.includes('-')){
-                    makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
-                } else {
-                    makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
-                }
-                mainQuery = true
-                break
-            case SUPPORTED_TYPES[2]:
-                if(host){
-                    makeQuery = multiple ? users[host].path(path) : users[host]
-                    mainQuery = true
-                } else {
-                    makeQuery = host
-                    mainQuery = false
-                }
-                break
-            default:
-                makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
-                mainQuery = true
-                break
-        }
-        */
         let queryMethod = method
         let queryProtocol = protocol
         let queryReg = !search.get('not')
