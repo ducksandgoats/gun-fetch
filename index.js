@@ -48,7 +48,7 @@ module.exports = function makeGunFetch(opts = null){
               if(hostname.includes('/')){
                 hostname = hostname.split('/').filter(Boolean)
                 pathname = pathname + hostname.slice(1).join('/')
-                hostname = hostname.pop()
+                hostname = hostname.shift()
             }
 
               if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
