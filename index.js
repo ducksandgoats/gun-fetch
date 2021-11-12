@@ -27,8 +27,7 @@ module.exports = function makeGunFetch(opts = null){
 
     const gun = Gun(opts || {peers: LIST_OF_URLS})
 
-    const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH', 'OPTIONS']
-    // const SUPPORTED_TYPES = ['-', '_', '.']
+    const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH']
     const encodeType = '-'
     const hostType = '_'
     const users = {}
@@ -249,42 +248,6 @@ module.exports = function makeGunFetch(opts = null){
                             if(res.data.length){
                                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
                             }
-                        }
-                    }
-                    break
-                }
-
-                case 'OPTIONS': {
-                    if(req.mainQuery){
-                        let checkClear = null
-
-                        let mainData = await new Promise((resolve) => {
-                            checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
-                            req.makeQuery.not(found => {
-                                resolve({found, not: true, message: 'done, most likely this does not have data'})
-                            })
-                        })
-    
-                        clearTimeout(checkClear)
-    
-                        res.statusCode = 200
-                        res.headers = {}
-                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(res.data.length){
-                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                        }
-                    } else {
-                        if(!users[req.makeQuery]){
-                            mainData = {err: 'User is not logged in'}
-                        } else {
-                            mainData = {user: query + ' is logged in'}
-                        }
-
-                        res.statusCode = 200
-                        res.headers = {}
-                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(res.data.length){
-                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     }
                     break
