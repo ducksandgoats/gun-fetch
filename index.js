@@ -44,12 +44,14 @@ module.exports = function makeGunFetch(opts = null){
 
           try {
               let {hostname, pathname, protocol, searchParams} = new URL(url)
-              hostname = hostname && hostname[0] === encodeType ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
-              if(hostname.includes('/')){
-                hostname = hostname.split('/').filter(Boolean)
-                pathname = pathname + hostname.slice(1).join('/')
-                hostname = hostname.shift()
-            }
+              if(hostname && hostname[0] === encodeType){
+                  hostname= Buffer.from(hostname.slice(1), 'hex').toString('utf-8')
+                  if(hostname.includes('/')){
+                    hostname = hostname.split('/').filter(Boolean)
+                    pathname = pathname + hostname.slice(1).join('/')
+                    hostname = hostname.shift()
+                }
+              }
 
               if((protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !hostname || hostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(hostname)) || (hostname[0] === '.' && hostname.length > 1 && !users[hostname.slice(1)])){
                   console.log('something wrong with the query')
