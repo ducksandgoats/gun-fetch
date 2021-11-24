@@ -22,10 +22,10 @@ const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 "https://gun-armitro.herokuapp.com/",
 "https://fire-gun.herokuapp.com/gun"]
 
-const STORAGE_FOLDER = path.resolve('./data')
+const STORAGE_FOLDER = path.resolve('./storage')
 
-if(!fs.existsSync('./data')){
-    fs.mkdirSync('./data')
+if(!fs.existsSync('./storage')){
+    fs.mkdirSync('./storage')
 }
 
 module.exports = function makeGunFetch(opts = null){
