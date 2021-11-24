@@ -1,5 +1,7 @@
 const makeFetch = require('make-fetch')
 const Gun = require('gun')
+const path = require('path')
+const fs = require('fs')
 require('gun/lib/path')
 require('gun/lib/not')
 require('./edits/unset')
@@ -20,9 +22,15 @@ const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 "https://gun-armitro.herokuapp.com/",
 "https://fire-gun.herokuapp.com/gun"]
 
+const STORAGE_FOLDER = path.resolve('./data')
+
+if(!fs.existsSync('./data')){
+    fs.mkdirSync('./data')
+}
+
 module.exports = function makeGunFetch(opts = null){
 
-    const gun = Gun(opts || {peers: LIST_OF_URLS})
+    const gun = Gun(opts || {peers: LIST_OF_URLS, file: STORAGE_FOLDER})
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH']
     const encodeType = '-'
