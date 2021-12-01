@@ -34,7 +34,7 @@ module.exports = function makeGunFetch(opts = {}){
     const fileLocation = finalOpts.file
 
     if(fileLocation && (!fs.existsSync(fileLocation)) {
-        fs.mkdirSync('./storage')
+        fs.mkdirSync(fileLocation)
     }
 
     const gun = Gun(finalOpts)
