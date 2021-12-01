@@ -23,14 +23,21 @@ const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 "https://fire-gun.herokuapp.com/gun"]
 
 const STORAGE_FOLDER = path.resolve('./storage')
-
-if(!fs.existsSync('./storage')){
-    fs.mkdirSync('./storage')
+const DEFAULT_OPTS = {
+    peers: LIST_OF_URLS,
+    file: STORAGE_FOLDER
 }
 
-module.exports = function makeGunFetch(opts = null){
+module.exports = function makeGunFetch(opts = {}){
+    const finalOpts = {...DEFAULT_OPTS, ...opts}
 
-    const gun = Gun(opts || {peers: LIST_OF_URLS, file: STORAGE_FOLDER})
+    const fileLocation = finalOpts.file
+
+    if(fileLocation && (!fs.existsSync(fileLocation)) {
+        fs.mkdirSync('./storage')
+    }
+
+    const gun = Gun(finalOpts)
 
     const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH']
     const encodeType = '-'
