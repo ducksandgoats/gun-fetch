@@ -33,7 +33,7 @@ module.exports = function makeGunFetch(opts = {}){
 
     const fileLocation = finalOpts.file
 
-    if(fileLocation && (!fs.existsSync(fileLocation)) {
+    if(fileLocation && (!fs.existsSync(fileLocation))){
         fs.mkdirSync(fileLocation)
     }
 
