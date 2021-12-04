@@ -2,6 +2,8 @@
 
 Fetch With GunDB
 
+this is all outdated, will update soon
+
 ```javascript
 const fetch = require('gun-fetch')({peers: ["https://gun-manhattan.herokuapp.com/gun",
 "https://us-west.xerberus.net/gun",
