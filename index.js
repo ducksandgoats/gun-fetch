@@ -4,7 +4,7 @@ const path = require('path')
 const fs = require('fs')
 require('gun/lib/path')
 require('gun/lib/not')
-require('./edits/unset')
+require('gun/lib/unset')
 
 const LIST_OF_URLS = ["https://gun-manhattan.herokuapp.com/gun",
 "https://us-west.xerberus.net/gun",
