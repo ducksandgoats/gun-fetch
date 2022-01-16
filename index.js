@@ -80,7 +80,8 @@ module.exports = function makeGunFetch(opts = {}){
                             mainData = await new Promise((resolve) => {
                                 req.makeQuery.once(found => {resolve(found)})
                             })
-                        } else {
+                        }
+                        if(req.queryNot){
                             let checkClear = null
 
                             mainData = await new Promise((resolve) => {
@@ -91,6 +92,11 @@ module.exports = function makeGunFetch(opts = {}){
                             })
         
                             clearTimeout(checkClear)
+                        }
+                        if(req.queryPaginate){
+                            mainData = await new Promise((resolve) => {
+                                req.makeQuery.get(JSON.parse(decodeURIComponent(req.queryPaginate))).once().map().once(found => {resolve(found)})
+                            })
                         }
                       res.statusCode = 200
                       res.headers = {}
@@ -282,24 +288,24 @@ module.exports = function makeGunFetch(opts = {}){
         return mainData
       }
 
-    function formatReq(req, method, protocol, search){
-        let path = req.split('/').filter(Boolean)
-        let count = path.length
-        let host = decodeURIComponent(path.shift())
+    function formatReq(req, method, protocol, searchParams){
+        let mainPath = req.split('/').filter(Boolean)
+        let count = mainPath.length
+        let host = decodeURIComponent(mainPath.shift())
         let queryType = host[0] === hostType ? host[0] : ''
         host = host.replace(queryType, '')
         let multiple = count > 1 ? true : false
-        path = path.map(data => {return decodeURIComponent(data)}).join('.')
+        mainPath = mainPath.map(data => {return decodeURIComponent(data)}).join('.')
         let makeQuery = null
         let mainQuery = null
         if(queryType){
             if(host){
                 if(host.includes('.') || host.includes('-') || host.includes('_')){
-                    makeQuery = multiple ? gun.get('~' + host).path(path) : gun.get('~' + host)
+                    makeQuery = multiple ? gun.get('~' + host).path(mainPath) : gun.get('~' + host)
                 } else if(users[host]){
-                    makeQuery = multiple ? users[host].path(path) : users[host]
+                    makeQuery = multiple ? users[host].path(mainPath) : users[host]
                 } else if(!users[host]){
-                    makeQuery = multiple ? gun.get('~@' + host).path(path) : gun.get('~@' + host)
+                    makeQuery = multiple ? gun.get('~@' + host).path(mainPath) : gun.get('~@' + host)
                 }
                 mainQuery = true
             } else {
@@ -307,13 +313,16 @@ module.exports = function makeGunFetch(opts = {}){
                 mainQuery = false
             }
         } else {
-            makeQuery = multiple ? gun.get(host).path(path) : gun.get(host)
+            makeQuery = multiple ? gun.get(host).path(mainPath) : gun.get(host)
             mainQuery = true
         }
         let queryMethod = method
         let queryProtocol = protocol
-        let queryReg = !search.get('not')
-        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryReg}
+        let mainParams = new URLSearchParams(searchParams)
+        let queryReg = mainParams.toString() ? true : false
+        let queryNot = mainParams.get('not')
+        let queryPaginate = mainParams.get('paginate')
+        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryReg, queryNot, queryPaginate}
     }
 
     fetch.destroy = () => {
