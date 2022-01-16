@@ -80,8 +80,7 @@ module.exports = function makeGunFetch(opts = {}){
                             mainData = await new Promise((resolve) => {
                                 req.makeQuery.once(found => {resolve(found)})
                             })
-                        }
-                        if(req.queryNot){
+                        } else if(req.queryNot){
                             let checkClear = null
 
                             mainData = await new Promise((resolve) => {
@@ -92,11 +91,12 @@ module.exports = function makeGunFetch(opts = {}){
                             })
         
                             clearTimeout(checkClear)
-                        }
-                        if(req.queryPaginate){
+                        } else if(req.queryPaginate){
                             mainData = await new Promise((resolve) => {
                                 req.makeQuery.get(JSON.parse(decodeURIComponent(req.queryPaginate))).once().map().once(found => {resolve(found)})
                             })
+                        } else {
+                            mainData = null
                         }
                       res.statusCode = 200
                       res.headers = {}
