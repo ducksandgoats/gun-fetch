@@ -321,7 +321,13 @@ module.exports = function makeGunFetch(opts = {}){
         let mainParams = new URLSearchParams(searchParams)
         let queryReg = mainParams.toString() ? true : false
         let queryNot = mainParams.get('not')
+        if(queryNot){
+            queryNot = JSON.parse(queryNot)
+        }
         let queryPaginate = mainParams.get('paginate')
+        if(queryPaginate){
+            queryPaginate = JSON.parse(queryPaginate)
+        }
         return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryReg, queryNot, queryPaginate}
     }
 
