@@ -84,7 +84,7 @@ module.exports = function makeGunFetch(opts = {}){
                             let checkClear = null
 
                             mainData = await new Promise((resolve) => {
-                                checkClear = setTimeout(() => {resolve({not: false, message: 'timed out, most likely this has data'})}, 5000)
+                                checkClear = setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
                                 req.makeQuery.not(found => {
                                     resolve({found, not: true, message: 'done, most likely this does not have data'})
                                 })
