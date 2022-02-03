@@ -213,21 +213,30 @@ module.exports = function makeGunFetch(opts = {}){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
                     } else {
-                        mainData = await new Promise((resolve) => {
-                            gun.user().create(body.user, body.pass, ack => {
-                                resolve(ack)
-                            })
+                        let checkUser = await new Promise((resolve) => {
+                            gun.get('~@' + body.user).once(found => {resolve(found)})
                         })
-                        if(mainData.err){
+                        if(checkUser){
                             res.statusCode = 400
-                            res.headers = {}
+                            res.headers = {'Content-Type': 'application/json; charset=utf-8'}
+                            res.data = [JSON.stringify('alias is taken')]
                         } else {
-                            res.statusCode = 200
-                            res.headers = {}
-                        }
-                        res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                        if(res.data.length){
-                            res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            mainData = await new Promise((resolve) => {
+                                gun.user().create(body.user, body.pass, ack => {
+                                    resolve(ack)
+                                })
+                            })
+                            if(mainData.err){
+                                res.statusCode = 400
+                                res.headers = {}
+                            } else {
+                                res.statusCode = 200
+                                res.headers = {}
+                            }
+                            res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                            if(res.data.length){
+                                res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                            }
                         }
                     }
                     break
@@ -289,46 +298,47 @@ module.exports = function makeGunFetch(opts = {}){
       }
 
     function formatReq(req, method, protocol, searchParams){
+        const mainReq = {}
         let mainPath = req.split('/').filter(Boolean)
         let count = mainPath.length
         let host = decodeURIComponent(mainPath.shift())
-        let queryType = host[0] === hostType ? host[0] : ''
+        mainReq.queryType = host[0] === hostType ? host[0] : ''
         host = host.replace(queryType, '')
         let multiple = count > 1 ? true : false
         mainPath = mainPath.map(data => {return decodeURIComponent(data)}).join('.')
-        let makeQuery = null
-        let mainQuery = null
+        mainReq.makeQuery = null
+        mainReq.mainQuery = null
         if(queryType){
             if(host){
                 if(host.includes('.') || host.includes('-') || host.includes('_')){
-                    makeQuery = multiple ? gun.get('~' + host).path(mainPath) : gun.get('~' + host)
+                    mainReq.makeQuery = multiple ? gun.get('~' + host).path(mainPath) : gun.get('~' + host)
                 } else if(users[host]){
-                    makeQuery = multiple ? users[host].path(mainPath) : users[host]
+                    mainReq.makeQuery = multiple ? users[host].path(mainPath) : users[host]
                 } else if(!users[host]){
-                    makeQuery = multiple ? gun.get('~@' + host).path(mainPath) : gun.get('~@' + host)
+                    mainReq.makeQuery = multiple ? gun.get('~@' + host).path(mainPath) : gun.get('~@' + host)
                 }
-                mainQuery = true
+                mainReq.mainQuery = true
             } else {
-                makeQuery = host
-                mainQuery = false
+                mainReq.makeQuery = host
+                mainReq.mainQuery = false
             }
         } else {
-            makeQuery = multiple ? gun.get(host).path(mainPath) : gun.get(host)
-            mainQuery = true
+            mainReq.makeQuery = multiple ? gun.get(host).path(mainPath) : gun.get(host)
+            mainReq.mainQuery = true
         }
-        let queryMethod = method
-        let queryProtocol = protocol
+        mainReq.queryMethod = method
+        mainReq.queryProtocol = protocol
         let mainParams = new URLSearchParams(searchParams)
-        let queryReg = mainParams.toString() ? true : false
-        let queryNot = mainParams.get('not')
+        mainReq.queryReg = mainParams.toString() ? true : false
+        mainReq.queryNot = mainParams.get('not')
         if(queryNot){
             queryNot = JSON.parse(queryNot)
         }
-        let queryPaginate = mainParams.get('paginate')
+        mainReq.queryPaginate = mainParams.get('paginate')
         if(queryPaginate){
             queryPaginate = JSON.parse(queryPaginate)
         }
-        return {makeQuery, mainQuery, queryMethod, queryProtocol, queryType, queryReg, queryNot, queryPaginate}
+        return mainReq
     }
 
     fetch.destroy = () => {
