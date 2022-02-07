@@ -216,7 +216,7 @@ module.exports = function makeGunFetch(opts = {}){
                         mainData = await new Promise((resolve) => {
                             gun.user().create(body.user, body.pass, ack => {
                                 resolve(ack)
-                            })
+                            }, {already: false})
                         })
                         if(mainData.err){
                             res.statusCode = 400
