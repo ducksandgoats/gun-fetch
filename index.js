@@ -83,7 +83,7 @@ module.exports = function makeGunFetch(opts = {}){
                         } else if(req.queryNot){
                             mainData = await Promise.any([
                                 new Promise((resolve) => {
-                                    setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 10000)
+                                    setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
                                 }),
                                 new Promise((resolve) => {
                                     req.makeQuery.not(found => {
@@ -104,7 +104,7 @@ module.exports = function makeGunFetch(opts = {}){
                         } else if(req.queryPaginate){
                             mainData = await Promise.any([
                                 new Promise((resolve) => {
-                                    setTimeout(() => {resolve({err: 'pagination has timed out', message: 'timed out, most likely this has data'})}, 10000)
+                                    setTimeout(() => {resolve({err: 'pagination has timed out', message: 'timed out, most likely this has data'})}, 5000)
                                 }),
                                 new Promise((resolve) => {
                                     req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
