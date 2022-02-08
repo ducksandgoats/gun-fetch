@@ -81,11 +81,9 @@ module.exports = function makeGunFetch(opts = {}){
                                 req.makeQuery.once(found => {resolve(found)})
                             })
                         } else if(req.queryNot){
-                            // let checkClear = null
-
                             mainData = await Promise.any([
                                 new Promise((resolve) => {
-                                    setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
+                                    setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 10000)
                                 }),
                                 new Promise((resolve) => {
                                     req.makeQuery.not(found => {
@@ -93,6 +91,8 @@ module.exports = function makeGunFetch(opts = {}){
                                     })
                                 })
                             ])
+                            // let checkClear = null
+
                             // let mainData = await new Promise((resolve) => {
                             //     checkClear = setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
                             //     req.makeQuery.not(found => {
@@ -102,11 +102,17 @@ module.exports = function makeGunFetch(opts = {}){
         
                             // clearTimeout(checkClear)
                         } else if(req.queryPaginate){
-                            mainData = await new Promise((resolve) => {
-                                req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
-                            })
-                        } else {
-                            mainData = null
+                            mainData = await Promise.any([
+                                new Promise((resolve) => {
+                                    setTimeout(() => {resolve({err: 'pagination has timed out', message: 'timed out, most likely this has data'})}, 10000)
+                                }),
+                                new Promise((resolve) => {
+                                    req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
+                                })
+                            ])
+                            // mainData = await new Promise((resolve) => {
+                            //     req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
+                            // })
                         }
                       res.statusCode = 200
                       res.headers = {}
@@ -359,15 +365,18 @@ module.exports = function makeGunFetch(opts = {}){
         }
         mainReq.queryMethod = method
         mainReq.queryProtocol = protocol
-        mainReq.queryNot = searching.get('not')
-        if(mainReq.queryNot){
-            mainReq.queryNot = JSON.parse(mainReq.queryNot)
-        }
-        mainReq.queryPaginate = searching.get('paginate')
-        if(mainReq.queryPaginate){
-            mainReq.queryPaginate = JSON.parse(mainReq.queryPaginate)
-        }
+        mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
+        mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
         mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
+        // mainReq.queryNot = searching.get('not')
+        // if(mainReq.queryNot){
+        //     mainReq.queryNot = JSON.parse(mainReq.queryNot)
+        // }
+        // mainReq.queryPaginate = searching.get('paginate')
+        // if(mainReq.queryPaginate){
+        //     mainReq.queryPaginate = JSON.parse(mainReq.queryPaginate)
+        // }
+        // mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         return mainReq
     }
 
