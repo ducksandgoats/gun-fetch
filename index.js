@@ -198,12 +198,14 @@ module.exports = function makeGunFetch(opts = {}){
                     let mainData = null
                     if(req.mainQuery){
                         if(req.queryReg){
+                            let useBody = await getBody(body)
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.put(await getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.put(useBody).once(found => {resolve(found)})
                             })
                         } else {
+                            let useBody = await getBody(body)
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.set(await getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.set(useBody).once(found => {resolve(found)})
                             })
                         }
                         if(mainData !== undefined){
@@ -269,8 +271,9 @@ module.exports = function makeGunFetch(opts = {}){
                                 req.makeQuery.put(null).once(found => {resolve(found)})
                             })
                         } else {
+                            let useBody = await getBody(body)
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.unset(await getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.unset(useBody).once(found => {resolve(found)})
                             })
                         }
                         if(mainData !== undefined){
