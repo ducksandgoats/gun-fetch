@@ -229,6 +229,36 @@ module.exports = function makeGunFetch(opts = {}){
                         if(res.data.length){
                             res.headers['Content-Type'] = 'application/json; charset=utf-8'
                         }
+                        /* ---------------------------------- 
+                        the following block that is commented out is used to make sure the alias is unique
+                        before applying the changes
+                        we should figure out whether we want to enforce uniqueness for aliases or not
+                        ------------------------------------ */
+                        // let checkUser = await new Promise((resolve) => {
+                        //     gun.get('~@' + body.user).once(found => {resolve(found)})
+                        // })
+                        // if(checkUser){
+                        //     res.statusCode = 400
+                        //     res.headers = {'Content-Type': 'application/json; charset=utf-8'}
+                        //     res.data = [JSON.stringify('alias is taken')]
+                        // } else {
+                        //     mainData = await new Promise((resolve) => {
+                        //         gun.user().create(body.user, body.pass, ack => {
+                        //             resolve(ack)
+                        //         })
+                        //     })
+                        //     if(mainData.err){
+                        //         res.statusCode = 400
+                        //         res.headers = {}
+                        //     } else {
+                        //         res.statusCode = 200
+                        //         res.headers = {}
+                        //     }
+                        //     res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
+                        //     if(res.data.length){
+                        //         res.headers['Content-Type'] = 'application/json; charset=utf-8'
+                        //     }
+                        // }
                     }
                     break
                 }
