@@ -58,7 +58,7 @@ module.exports = function makeGunFetch(opts = {}){
         const {url, method, headers, body} = request
 
           try {
-              let {hostname, pathname, protocol} = new URL(url)
+              let {hostname, pathname, protocol, searchParams} = new URL(url)
               if(hostname && hostname[0] === encodeType){
                   hostname = Buffer.from(hostname.slice(1), 'hex').toString('utf-8')
               }
@@ -68,7 +68,7 @@ module.exports = function makeGunFetch(opts = {}){
                   return new Error('invalid query, must be a valid query')
               }
 
-              let req = formatReq(`${hostname}${pathname}`, method, protocol, headers)
+              let req = formatReq(`${hostname}${pathname}`, method, protocol, searchParams, headers)
 
               let res = {statusCode: 0, headers: {}, data: null}
               switch (req.queryMethod) {
@@ -81,16 +81,26 @@ module.exports = function makeGunFetch(opts = {}){
                                 req.makeQuery.once(found => {resolve(found)})
                             })
                         } else if(req.queryNot){
-                            let checkClear = null
+                            // let checkClear = null
 
-                            mainData = await new Promise((resolve) => {
-                                checkClear = setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
-                                req.makeQuery.not(found => {
-                                    resolve({found, not: true, message: 'done, most likely this does not have data'})
+                            mainData = await Promise.any([
+                                new Promise((resolve) => {
+                                    setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
+                                }),
+                                new Promise((resolve) => {
+                                    req.makeQuery.not(found => {
+                                        resolve({found, not: true, message: 'done, most likely this does not have data'})
+                                    })
                                 })
-                            })
+                            ])
+                            // let mainData = await new Promise((resolve) => {
+                            //     checkClear = setTimeout(() => {resolve({found: null, not: false, message: 'timed out, most likely this has data'})}, 5000)
+                            //     req.makeQuery.not(found => {
+                            //         resolve({found, not: true, message: 'done, most likely this does not have data'})
+                            //     })
+                            // })
         
-                            clearTimeout(checkClear)
+                            // clearTimeout(checkClear)
                         } else if(req.queryPaginate){
                             mainData = await new Promise((resolve) => {
                                 req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
@@ -318,7 +328,7 @@ module.exports = function makeGunFetch(opts = {}){
         return mainData
       }
 
-    function formatReq(req, method, protocol, headers){
+    function formatReq(req, method, protocol, searching, headers){
         const mainReq = {}
         let mainPath = req.split('/').filter(Boolean)
         let count = mainPath.length
@@ -349,8 +359,14 @@ module.exports = function makeGunFetch(opts = {}){
         }
         mainReq.queryMethod = method
         mainReq.queryProtocol = protocol
-        mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
-        mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
+        mainReq.queryNot = searching.get('not')
+        if(mainReq.queryNot){
+            mainReq.queryNot = JSON.parse(mainReq.queryNot)
+        }
+        mainReq.queryPaginate = searching.get('paginate')
+        if(mainReq.queryPaginate){
+            mainReq.queryPaginate = JSON.parse(mainReq.queryPaginate)
+        }
         mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         return mainReq
     }
