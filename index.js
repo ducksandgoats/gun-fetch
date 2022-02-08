@@ -294,12 +294,12 @@ module.exports = function makeGunFetch(opts = {}){
         let count = mainPath.length
         let host = decodeURIComponent(mainPath.shift())
         mainReq.queryType = host[0] === hostType ? host[0] : ''
-        host = host.replace(queryType, '')
+        host = host.replace(mainReq.queryType, '')
         let multiple = count > 1 ? true : false
         mainPath = mainPath.map(data => {return decodeURIComponent(data)}).join('.')
         mainReq.makeQuery = null
         mainReq.mainQuery = null
-        if(queryType){
+        if(mainReq.queryType){
             if(host){
                 if(host.includes('.') || host.includes('-') || host.includes('_')){
                     mainReq.makeQuery = multiple ? gun.get('~' + host).path(mainPath) : gun.get('~' + host)
