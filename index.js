@@ -58,7 +58,7 @@ module.exports = function makeGunFetch(opts = {}){
         const {url, method, headers, body} = request
 
           try {
-              let {hostname, pathname, protocol, searchParams} = new URL(url)
+              let {hostname, pathname, protocol} = new URL(url)
               if(hostname && hostname[0] === encodeType){
                   hostname = Buffer.from(hostname.slice(1), 'hex').toString('utf-8')
               }
@@ -68,7 +68,7 @@ module.exports = function makeGunFetch(opts = {}){
                   return new Error('invalid query, must be a valid query')
               }
 
-              let req = formatReq(`${hostname}${pathname}`, method, protocol, searchParams)
+              let req = formatReq(`${hostname}${pathname}`, method, protocol, headers)
 
               let res = {statusCode: 0, headers: {}, data: null}
               switch (req.queryMethod) {
@@ -93,7 +93,7 @@ module.exports = function makeGunFetch(opts = {}){
                             clearTimeout(checkClear)
                         } else if(req.queryPaginate){
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.get(JSON.parse(decodeURIComponent(req.queryPaginate))).once().map().once(found => {resolve(found)})
+                                req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
                             })
                         } else {
                             mainData = null
@@ -288,7 +288,7 @@ module.exports = function makeGunFetch(opts = {}){
         return mainData
       }
 
-    function formatReq(req, method, protocol, searchParams){
+    function formatReq(req, method, protocol, headers){
         const mainReq = {}
         let mainPath = req.split('/').filter(Boolean)
         let count = mainPath.length
@@ -319,16 +319,9 @@ module.exports = function makeGunFetch(opts = {}){
         }
         mainReq.queryMethod = method
         mainReq.queryProtocol = protocol
-        let mainParams = new URLSearchParams(searchParams)
-        mainReq.queryReg = mainParams.toString() ? true : false
-        mainReq.queryNot = mainParams.get('not')
-        if(queryNot){
-            queryNot = JSON.parse(queryNot)
-        }
-        mainReq.queryPaginate = mainParams.get('paginate')
-        if(queryPaginate){
-            queryPaginate = JSON.parse(queryPaginate)
-        }
+        mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
+        mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
+        mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         return mainReq
     }
 
