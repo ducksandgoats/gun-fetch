@@ -121,14 +121,14 @@ module.exports = function makeGunFetch(opts = {}){
 
     const fetch = makeFetch(async request => {
 
-        if(request.body !== null){
-            request.body = await getBody(request.body)
-            try {
-                request.body = JSON.parse(request.body)
-            } catch (error) {
-                console.log(error)
-            }
-        }
+        // if(request.body !== null){
+        //     request.body = await getBody(request.body)
+        //     try {
+        //         request.body = JSON.parse(request.body)
+        //     } catch (error) {
+        //         console.log(error)
+        //     }
+        // }
 
         const {url, method, headers, body} = request
 
@@ -199,11 +199,11 @@ module.exports = function makeGunFetch(opts = {}){
                     if(req.mainQuery){
                         if(req.queryReg){
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.put(getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.put(await getBody(body)).once(found => {resolve(found)})
                             })
                         } else {
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.set(getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.set(await getBody(body)).once(found => {resolve(found)})
                             })
                         }
                         if(mainData !== undefined){
@@ -270,7 +270,7 @@ module.exports = function makeGunFetch(opts = {}){
                             })
                         } else {
                             mainData = await new Promise((resolve) => {
-                                req.makeQuery.unset(getBody(body)).once(found => {resolve(found)})
+                                req.makeQuery.unset(await getBody(body)).once(found => {resolve(found)})
                             })
                         }
                         if(mainData !== undefined){
