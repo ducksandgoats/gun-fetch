@@ -114,10 +114,6 @@ module.exports = function makeGunFetch(opts = {}){
         // mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         return mainReq
     }
-    
-    fetch.destroy = () => {
-        gun = undefined
-    }
 
     const fetch = makeFetch(async request => {
 
@@ -390,6 +386,10 @@ module.exports = function makeGunFetch(opts = {}){
               return {statusCode: 500, headers, data: [e.stack]}
           }
     })
+
+    fetch.destroy = () => {
+        gun = undefined
+    }
 
     return fetch
 
