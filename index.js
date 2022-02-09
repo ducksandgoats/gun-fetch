@@ -39,7 +39,8 @@ module.exports = function makeGunFetch(opts = {}){
 
     const gun = Gun(finalOpts)
 
-    const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PATCH']
+    const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
+    //'POST', 'PATCH'
     const encodeType = '-'
     const hostType = '_'
     const users = {}
