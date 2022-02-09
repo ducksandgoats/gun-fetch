@@ -61,9 +61,9 @@ module.exports = function makeGunFetch(opts = {}){
         return mainData
       }
     
-    function formatReq(req, method, protocol, searching, headers){
+    function formatReq(hostname, pathname, method, searching, headers){
         const mainReq = {}
-        mainReq.mainPath = req.split('/').filter(Boolean)
+        mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean)
         mainReq.host = decodeURIComponent(mainReq.mainPath.shift())
         mainReq.queryType = mainReq.host[0] === hostType ? mainReq.host[0] : ''
         mainReq.host = mainReq.host.replace(mainReq.queryType, '')
@@ -90,7 +90,6 @@ module.exports = function makeGunFetch(opts = {}){
             mainReq.mainQuery = true
         }
         mainReq.queryMethod = method
-        mainReq.queryProtocol = protocol
         mainReq.wantReq = headers.accept && headers.accept.includes('text/html')
         mainReq.wantRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
         if(mainReq.queryMethod === 'GET'){
@@ -104,28 +103,10 @@ module.exports = function makeGunFetch(opts = {}){
             mainReq.queryUser = headers['x-delete'] && JSON.parse(headers['x-delete']) ? false : true
             mainReq.queryReg = headers['x-unset'] && JSON.parse(headers['x-unset']) ? false : true
         }
-        // mainReq.queryNot = searching.get('not')
-        // if(mainReq.queryNot){
-        //     mainReq.queryNot = JSON.parse(mainReq.queryNot)
-        // }
-        // mainReq.queryPaginate = searching.get('paginate')
-        // if(mainReq.queryPaginate){
-        //     mainReq.queryPaginate = JSON.parse(mainReq.queryPaginate)
-        // }
-        // mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         return mainReq
     }
 
     const fetch = makeFetch(async request => {
-
-        // if(request.body !== null){
-        //     request.body = await getBody(request.body)
-        //     try {
-        //         request.body = JSON.parse(request.body)
-        //     } catch (error) {
-        //         console.log(error)
-        //     }
-        // }
 
         const {url, method, headers, body} = request
 
@@ -139,10 +120,18 @@ module.exports = function makeGunFetch(opts = {}){
               }
 
               if(protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || mainHostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)){
-                  return {statusCode: 400, headers: {}, data: ['query is incorrect']}
+                  const reqErr = {statusCode: 400, headers: {}, data: []}
+                  if(headers.accept && headers.accept.includes('text/html')){
+                      reqErr.data = [`<html><head><title>Gun</title></head><body><p>query is incorrect</p></body></html>`]
+                      reqErr.headers['Content-Type'] = 'text/html; charset=utf-8'
+                  } else {
+                    reqErr.data = [JSON.stringify('query is incorrect')]
+                    reqErr.headers['Content-Type'] = 'application/json; charset=utf-8'
+                  }
+                  return reqErr
               }
 
-              let req = formatReq(`${mainHostname}${pathname}`, method, protocol, searchParams, headers)
+              let req = formatReq(hostname, pathname, method, searchParams, headers)
 
               let res = {statusCode: 0, headers: {}, data: []}
               switch (req.queryMethod) {
@@ -308,78 +297,6 @@ module.exports = function makeGunFetch(opts = {}){
                     }
                     break
                 }
-
-                // case 'POST': {
-                //     let mainData = null
-                //     if(req.mainQuery){
-                //         mainData = await new Promise((resolve) => {
-                //             req.makeQuery.set(body).once(found => {resolve(found)})
-                //         })
-                        
-                //         res.statusCode = 200
-                //         res.headers = {}
-                //         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                //         if(res.data.length){
-                //             res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                //         }
-                //     } else {
-                //         mainData = await new Promise((resolve) => {
-                //             gun.user().create(body.user, body.pass, ack => {
-                //                 resolve(ack)
-                //             }, {already: false})
-                //         })
-                //         if(mainData.err){
-                //             res.statusCode = 400
-                //             res.headers = {}
-                //         } else {
-                //             res.statusCode = 200
-                //             res.headers = {}
-                //         }
-                //         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                //         if(res.data.length){
-                //             res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                //         }
-                //     }
-                //     break
-                // }
-
-                // case 'PATCH': {
-                //     let mainData = null
-                //     if(req.mainQuery){
-                //         mainData = await new Promise((resolve) => {
-                //             req.makeQuery.put(body).once(found => {resolve(found)})
-                //         })
-                        
-                //         res.statusCode = 200
-                //         res.headers = {}
-                //         res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                //         if(res.data.length){
-                //             res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                //         }
-                //     } else {
-                //         if(!users[body.user]){
-                //             mainData = {message: 'User is not logged in'}
-                //             res.statusCode = 400
-                //             res.headers = {}
-                //             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                //             if(res.data.length){
-                //                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                //             }
-                //         } else {
-                //             users[body.user].leave()
-                //             delete users[body.user]
-                //             mainData = {message: 'User has been logged out'}
-                //             res.statusCode = 200
-                //             res.headers = {}
-                //             res.data = typeof(mainData) !== 'undefined' ? [JSON.stringify(mainData)] : []
-                //             if(res.data.length){
-                //                 res.headers['Content-Type'] = 'application/json; charset=utf-8'
-                //             }
-                //         }
-                //     }
-                //     break
-                // }
-
               }
               return res
 
