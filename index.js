@@ -163,6 +163,8 @@ module.exports = function makeGunFetch(opts = {}){
                                     req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
                                 })
                             ])
+                        } else {
+                            mainData = undefined
                         }
                         if(mainData !== undefined){
                             res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
