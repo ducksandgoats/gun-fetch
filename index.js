@@ -48,7 +48,7 @@ module.exports = function makeGunFetch(opts = {}){
     async function getBody(body) {
         let mainData = ''
         if(body){
-            for await (const data of body) {
+            for await (let data of body) {
                 mainData += data
             }
             try {
