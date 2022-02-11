@@ -46,19 +46,29 @@ module.exports = function makeGunFetch(opts = {}){
     const users = {}
 
     async function getBody(body) {
-        let mainData = ''
-      
-        for await (const data of body) {
-          mainData += data
-        }
+        let mainData = body
 
         try {
-            mainData = JSON.parse(mainData)
+            mainData = JSON.parse(body)
         } catch (error) {
             console.error(error)
         }
-      
+
         return mainData
+        // let mainData = ''
+        // if(body[Symbol.asyncIterator]){
+        //     for await (const data of body) {
+        //         mainData += data
+        //       }
+        // } else {
+        //     mainData = body
+        // }
+        // try {
+        //     mainData = JSON.parse(mainData)
+        // } catch (error) {
+        //     console.error(error)
+        // }
+        // return mainData
       }
     
     function formatReq(hostname, pathname, method, searching, headers){
