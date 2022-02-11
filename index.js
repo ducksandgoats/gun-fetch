@@ -97,10 +97,14 @@ module.exports = function makeGunFetch(opts = {}){
             mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
             mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         } else if(mainReq.queryMethod === 'PUT'){
-            mainReq.queryUser = headers['x-create'] && JSON.parse(headers['x-create']) ? false : true
+            mainReq.queryCreate = headers['x-create']
+            mainReq.queryLogin = headers['x-login']
+            mainReq.queryErr = mainReq.queryCreate || mainReq.queryLogin ? false : true
             mainReq.queryReg = headers['x-set'] && JSON.parse(headers['x-set']) ? false : true
         } else if(mainReq.queryMethod === 'DELETE'){
-            mainReq.queryUser = headers['x-delete'] && JSON.parse(headers['x-delete']) ? false : true
+            mainReq.queryDelete = headers['x-delete']
+            mainReq.queryLogout = headers['x-logout']
+            mainReq.queryErr = mainReq.queryDelete || mainReq.queryLogout ? false : true
             mainReq.queryReg = headers['x-unset'] && JSON.parse(headers['x-unset']) ? false : true
         }
         return mainReq
@@ -205,25 +209,19 @@ module.exports = function makeGunFetch(opts = {}){
                         }
                         res.headers['Content-Type'] = req.wantRes
                     } else {
-                        if(req.queryUser){
-                            if(users[body.user]){
-                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({err: 'User is currently logged in'})}</p></body></html>`] : [JSON.stringify({err: 'User is currently logged in'})]
-                                res.statusCode = 400
-                                res.headers['Content-Type'] = req.wantRes
-                            } else {
-                                users[body.user] = gun.user()
+                        if(req.queryErr){
+                            res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>"x-create" or "x-login" header is needed with the alias</p></body></html>`] : [JSON.stringify('"x-create" or "x-login" header is needed with the alias')]
+                            res.statusCode = 400
+                            res.headers['Content-Type'] = req.wantRes
+                        } else if(req.queryCreate){
+                            let useBody = await getBody(body)
+                            if(useBody){
                                 mainData = await new Promise((resolve) => {
-                                    users[body.user].auth(body.user, body.pass, ack => {
-                                        if(ack.err){
-                                            resolve(ack)
-                                        } else {
-                                            resolve({soul: ack.soul})
-                                        }
-                                    })
+                                    gun.user().create(req.queryCreate, useBody, ack => {
+                                        resolve(ack)
+                                    }, {already: false})
                                 })
                                 if(mainData.err){
-                                    // users[body.user].leave()
-                                    delete users[body.user]
                                     res.statusCode = 400
                                     res.headers['Content-Type'] = req.wantRes
                                 } else {
@@ -231,21 +229,45 @@ module.exports = function makeGunFetch(opts = {}){
                                     res.headers['Content-Type'] = req.wantRes
                                 }
                                 res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-                            }
-                        } else {
-                            mainData = await new Promise((resolve) => {
-                                gun.user().create(body.user, body.pass, ack => {
-                                    resolve(ack)
-                                }, {already: false})
-                            })
-                            if(mainData.err){
+                            } else {
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>`] : [JSON.stringify('password is needed in the body')]
                                 res.statusCode = 400
                                 res.headers['Content-Type'] = req.wantRes
+                            }
+                        } else if(req.queryLogin){
+                            let useBody = await getBody(body)
+                            if(useBody){
+                                if(users[req.queryLogin]){
+                                    res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({err: 'User is currently logged in'})}</p></body></html>`] : [JSON.stringify({err: 'User is currently logged in'})]
+                                    res.statusCode = 400
+                                    res.headers['Content-Type'] = req.wantRes
+                                } else {
+                                    users[req.queryLogin] = gun.user()
+                                    mainData = await new Promise((resolve) => {
+                                        users[req.queryLogin].auth(body.user, body.pass, ack => {
+                                            if(ack.err){
+                                                resolve(ack)
+                                            } else {
+                                                resolve({soul: ack.soul})
+                                            }
+                                        })
+                                    })
+                                    if(mainData.err){
+                                        // users[body.user].leave()
+                                        delete users[req.queryLogin]
+                                        res.statusCode = 400
+                                        res.headers['Content-Type'] = req.wantRes
+                                    } else {
+                                        res.statusCode = 200
+                                        res.headers['Content-Type'] = req.wantRes
+                                    }
+                                    res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
+                                }
                             } else {
-                                res.statusCode = 200
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>`] : [JSON.stringify('password is needed in the body')]
+                                res.statusCode = 400
                                 res.headers['Content-Type'] = req.wantRes
                             }
-                            res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
                         }
                     }
                     break
@@ -273,28 +295,39 @@ module.exports = function makeGunFetch(opts = {}){
                         }
                         res.headers['Content-Type'] = req.wantRes
                     } else {
-                        if(req.queryUser){
-                            if(!users[body.user]){
+                        if(req.queryErr){
+                            res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>"x-delete" or "x-logout" header is needed with the alias</p></body></html>`] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')]
+                            res.statusCode = 400
+                            res.headers['Content-Type'] = req.wantRes
+                        } else if(req.queryLogout){
+                            if(!users[req.queryLogout]){
                                 mainData = {err: 'User is not logged in'}
                                 res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({err: 'User is not logged in'})}</p></body></html>`] : [JSON.stringify({err: 'User is not logged in'})]
                                 res.statusCode = 400
                                 res.headers['Content-Type'] = req.wantRes
                             } else {
-                                users[body.user].leave()
-                                delete users[body.user]
+                                users[req.queryLogout].leave()
+                                delete users[req.queryLogout]
                                 res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({message: 'User has been logged out'})}</p></body></html>`] : [JSON.stringify({message: 'User has been logged out'})]
                                 res.statusCode = 200
                                 res.headers['Content-Type'] = req.wantRes
                             }
-                        } else {
-                            mainData = await new Promise((resolve) => {
-                                gun.user().delete(body.user, body.pass, ack => {
-                                    resolve(ack)
+                        } else if(req.queryDelete){
+                            let useBody = await getBody(body)
+                            if(useBody){
+                                mainData = await new Promise((resolve) => {
+                                    gun.user().delete(req.queryDelete, useBody, ack => {
+                                        resolve(ack)
+                                    })
                                 })
-                            })
-                            res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-                            res.statusCode = 200
-                            res.headers['Content-Type'] = req.wantRes
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
+                                res.statusCode = 200
+                                res.headers['Content-Type'] = req.wantRes
+                            } else {
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>`] : [JSON.stringify('password is needed in the body')]
+                                res.statusCode = 400
+                                res.headers['Content-Type'] = req.wantRes
+                            }
                         }
                     }
                     break
