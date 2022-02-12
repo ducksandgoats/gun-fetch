@@ -94,6 +94,7 @@ module.exports = function makeGunFetch(opts = {}){
         mainReq.wantReq = headers.accept && headers.accept.includes('text/html')
         mainReq.wantRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
         if(mainReq.queryMethod === 'GET'){
+            mainReq.queryAlias = headers['x-alias']
             mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
             mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
             mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
@@ -180,9 +181,20 @@ module.exports = function makeGunFetch(opts = {}){
                         }
                         res.headers['Content-Type'] = req.wantRes
                     } else {
-                        res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>register a user with the other methods</p></body></html>`] : [JSON.stringify('register a user with the other methods')]
-                        res.statusCode = 400
-                        res.headers['Content-Type'] = req.wantRes
+                        if(req.queryAlias){
+                            if(users[req.queryAlias]){
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>you are logged in as ${req.queryAlias}</p></body></html>`] : [JSON.stringify(`you are logged in as${req.queryAlias}`)]
+                                res.statusCode = 200
+                            } else {
+                                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>you are not logged in as ${req.queryAlias}</p></body></html>`] : [JSON.stringify(`you are not logged in as ${req.queryAlias}`)]
+                                res.statusCode = 400
+                            }
+                            res.headers['Content-Type'] = req.wantRes
+                        } else {
+                            res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>"x-alias" header was not used</p></body></html>`] : [JSON.stringify('"x-alias" header was not used')]
+                            res.statusCode = 400
+                            res.headers['Content-Type'] = req.wantRes
+                        }
                     }
                   break
                 }
