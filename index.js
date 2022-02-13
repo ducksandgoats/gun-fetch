@@ -161,9 +161,14 @@ module.exports = function makeGunFetch(opts = {}){
                                 })
                             ])
                         } else if(req.queryPaginate){
-                            mainData = await new Promise((resolve) => {
+                            mainData = await Promise.any([
+                                new Promise((resolve) => {
+                                    setTimeout(() => {resolve(undefined)}, 5000)
+                                }),
+                                new Promise((resolve) => {
                                     req.makeQuery.get(req.queryPaginate).once(found => {resolve(found)})
                                 })
+                            ])
                         } else {
                             mainData = undefined
                         }
