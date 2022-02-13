@@ -152,7 +152,7 @@ module.exports = function makeGunFetch(opts = {}){
                         } else if(req.queryNot){
                             mainData = await Promise.any([
                                 new Promise((resolve) => {
-                                    setTimeout(() => {resolve({found: undefined, result: false})}, 5000)
+                                    setTimeout(() => {resolve({found: null, result: false})}, 5000)
                                 }),
                                 new Promise((resolve) => {
                                     req.makeQuery.not(found => {resolve({found, result: true})})
