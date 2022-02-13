@@ -1,6 +1,6 @@
 {
   "name": "gun-fetch",
-  "version": "2.8.9",
+  "version": "2.9.0",
   "description": "Fetch with GunDB",
   "main": "index.js",
   "scripts": {
