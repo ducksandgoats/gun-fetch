@@ -96,7 +96,7 @@ module.exports = function makeGunFetch(opts = {}){
         if(mainReq.queryMethod === 'GET'){
             mainReq.queryAlias = headers['x-alias']
             mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
-            mainReq.queryPaginate = headers['x-pagination'] ? JSON.parse(headers['x-pagination']) : null
+            mainReq.queryPaginate = headers['x-paginate'] ? JSON.parse(headers['x-paginate']) : null
             mainReq.queryReg = mainReq.queryNot || mainReq.queryPaginate ? false : true
         } else if(mainReq.queryMethod === 'PUT'){
             mainReq.queryCreate = headers['x-create']
@@ -152,23 +152,18 @@ module.exports = function makeGunFetch(opts = {}){
                         } else if(req.queryNot){
                             mainData = await Promise.any([
                                 new Promise((resolve) => {
-                                    setTimeout(() => {resolve(undefined)}, 5000)
+                                    setTimeout(() => {resolve({found: undefined, result: false})}, 5000)
                                 }),
                                 new Promise((resolve) => {
                                     req.makeQuery.not(found => {
-                                        resolve({found, not: true, message: 'done, most likely this does not have data'})
+                                        resolve({found, result: true})
                                     })
                                 })
                             ])
                         } else if(req.queryPaginate){
-                            mainData = await Promise.any([
-                                new Promise((resolve) => {
-                                    setTimeout(() => {resolve(undefined)}, 5000)
-                                }),
-                                new Promise((resolve) => {
-                                    req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
+                            mainData = await new Promise((resolve) => {
+                                    req.makeQuery.get(req.queryPaginate).once(found => {resolve(found)})
                                 })
-                            ])
                         } else {
                             mainData = undefined
                         }
