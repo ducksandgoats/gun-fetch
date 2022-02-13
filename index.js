@@ -64,32 +64,34 @@ module.exports = function makeGunFetch(opts = {}){
     
     function formatReq(hostname, pathname, method, searching, headers){
         const mainReq = {}
-        mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean)
-        mainReq.host = decodeURIComponent(mainReq.mainPath.shift())
-        mainReq.queryType = mainReq.host[0] === hostType ? mainReq.host[0] : ''
-        mainReq.host = mainReq.host.replace(mainReq.queryType, '')
+        mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => {return decodeURIComponent(data)})
         mainReq.multiple = mainReq.mainPath.length > 1 ? true : false
-        mainReq.mainPath = mainReq.mainPath.map(data => {return decodeURIComponent(data)}).join('.')
+        mainReq.mainHost = mainReq.mainPath.shift()
+        mainReq.queryType = mainReq.mainHost[0] === hostType ? mainReq.mainHost[0] : ''
+        mainReq.mainHost = mainReq.mainHost.replace(mainReq.queryType, '')
+        mainReq.mainPath = mainReq.mainPath.join('.')
+
         mainReq.makeQuery = null
         mainReq.mainQuery = null
         if(mainReq.queryType){
-            if(mainReq.host){
-                if(mainReq.host.includes('.') || mainReq.host.includes('-') || mainReq.host.includes('_')){
-                    mainReq.makeQuery = mainReq.multiple ? gun.get('~' + mainReq.host).path(mainReq.mainPath) : gun.get('~' + mainReq.host)
-                } else if(users[mainReq.host]){
-                    mainReq.makeQuery = mainReq.multiple ? users[mainReq.host].path(mainReq.mainPath) : users[mainReq.host]
-                } else if(!users[mainReq.host]){
-                    mainReq.makeQuery = mainReq.multiple ? gun.get('~@' + mainReq.host).path(mainReq.mainPath) : gun.get('~@' + mainReq.host)
+            if(mainReq.mainHost){
+                if(mainReq.mainHost.includes('.') || mainReq.mainHost.includes('-') || mainReq.mainHost.includes('_')){
+                    mainReq.makeQuery = mainReq.multiple ? gun.get('~' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~' + mainReq.mainHost)
+                } else if(users[mainReq.mainHost]){
+                    mainReq.makeQuery = mainReq.multiple ? users[mainReq.mainHost].path(mainReq.mainPath) : users[mainReq.mainHost]
+                } else if(!users[mainReq.mainHost]){
+                    mainReq.makeQuery = mainReq.multiple ? gun.get('~@' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~@' + mainReq.mainHost)
                 }
                 mainReq.mainQuery = true
             } else {
-                mainReq.makeQuery = mainReq.host
+                mainReq.makeQuery = mainReq.mainHost
                 mainReq.mainQuery = false
             }
         } else {
-            mainReq.makeQuery = mainReq.multiple ? gun.get(mainReq.host).path(mainReq.mainPath) : gun.get(mainReq.host)
+            mainReq.makeQuery = mainReq.multiple ? gun.get(mainReq.mainHost).path(mainReq.mainPath) : gun.get(mainReq.mainHost)
             mainReq.mainQuery = true
         }
+
         mainReq.queryMethod = method
         mainReq.wantReq = headers.accept && headers.accept.includes('text/html')
         mainReq.wantRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
@@ -109,6 +111,7 @@ module.exports = function makeGunFetch(opts = {}){
             mainReq.queryErr = mainReq.queryDelete || mainReq.queryLogout ? false : true
             mainReq.queryReg = headers['x-unset'] && JSON.parse(headers['x-unset']) ? false : true
         }
+        
         return mainReq
     }
 
