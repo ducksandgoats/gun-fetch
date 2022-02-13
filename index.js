@@ -167,7 +167,7 @@ module.exports = function makeGunFetch(opts = {}){
                                     setTimeout(() => {resolve(undefined)}, 5000)
                                 }),
                                 new Promise((resolve) => {
-                                    req.makeQuery.get(req.queryPaginate).once(found => {resolve(found)})
+                                    req.makeQuery.get(req.queryPaginate).once().map().once(found => {resolve(found)})
                                 })
                             ])
                         } else {
