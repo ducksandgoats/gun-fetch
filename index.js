@@ -99,6 +99,7 @@ module.exports = function makeGunFetch (opts = {}) {
       mainReq.queryAlias = headers['x-alias']
       mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
       mainReq.queryPaginate = headers['x-paginate'] ? JSON.parse(headers['x-paginate']) : null
+      mainReq.queryTimer = Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
       mainReq.queryReg = !(mainReq.queryNot || mainReq.queryPaginate)
     } else if (mainReq.queryMethod === 'PUT') {
       mainReq.queryCreate = headers['x-create']
@@ -153,7 +154,7 @@ module.exports = function makeGunFetch (opts = {}) {
             } else if (req.queryNot) {
               mainData = await Promise.any([
                 new Promise((resolve) => {
-                  setTimeout(() => { resolve({ found: null, result: false }) }, 5000)
+                  setTimeout(() => { resolve({ found: null, result: false }) }, req.queryTimer)
                 }),
                 new Promise((resolve) => {
                   req.makeQuery.not(found => { resolve({ found, result: true }) })
@@ -162,7 +163,7 @@ module.exports = function makeGunFetch (opts = {}) {
             } else if (req.queryPaginate) {
               mainData = await Promise.any([
                 new Promise((resolve) => {
-                  setTimeout(() => { resolve(undefined) }, 5000)
+                  setTimeout(() => { resolve(undefined) }, req.queryTimer)
                 }),
                 new Promise((resolve) => {
                   req.makeQuery.get(req.queryPaginate).once().map().once(found => { resolve(found) })
