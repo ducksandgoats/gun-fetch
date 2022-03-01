@@ -2,9 +2,11 @@ const makeFetch = require('make-fetch')
 const Gun = require('gun')
 const path = require('path')
 const fs = require('fs')
+const crypto = require('crypto')
 require('gun/lib/path')
 require('gun/lib/not')
 require('gun/lib/unset')
+const SEA = Gun.SEA
 
 const LIST_OF_URLS = ['https://gun-manhattan.herokuapp.com/gun',
   'https://us-west.xerberus.net/gun',
@@ -47,22 +49,18 @@ module.exports = function makeGunFetch (opts = {}) {
 
   async function getBody (body) {
     let mainData = ''
-    if (body) {
-      for await (const data of body) {
-        mainData += data
-      }
-      try {
-        mainData = JSON.parse(mainData)
-      } catch (error) {
-        console.error(error)
-      }
-    } else {
-      mainData = body
+    for await (const data of body) {
+      mainData += data
+    }
+    try {
+      mainData = JSON.parse(mainData)
+    } catch (error) {
+      console.error(error)
     }
     return mainData
   }
 
-  function formatReq (hostname, pathname, method, searching, headers) {
+  function formatReq (hostname, pathname) {
     const mainReq = {}
     mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => { return decodeURIComponent(data) })
     mainReq.multiple = mainReq.mainPath.length > 1
@@ -71,56 +69,36 @@ module.exports = function makeGunFetch (opts = {}) {
     mainReq.mainHost = mainReq.mainHost.replace(mainReq.queryType, '')
     mainReq.mainPath = mainReq.mainPath.join('.')
 
-    mainReq.makeQuery = null
-    mainReq.mainQuery = null
     if (mainReq.queryType) {
       if (mainReq.mainHost) {
-        if (mainReq.mainHost.includes('.') || mainReq.mainHost.includes('-') || mainReq.mainHost.includes('_')) {
-          mainReq.makeQuery = mainReq.multiple ? gun.get('~' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~' + mainReq.mainHost)
-        } else if (users[mainReq.mainHost]) {
-          mainReq.makeQuery = mainReq.multiple ? users[mainReq.mainHost].path(mainReq.mainPath) : users[mainReq.mainHost]
-        } else if (!users[mainReq.mainHost]) {
-          mainReq.makeQuery = mainReq.multiple ? gun.get('~@' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~@' + mainReq.mainHost)
-        }
         mainReq.mainQuery = true
       } else {
-        mainReq.makeQuery = mainReq.mainHost
         mainReq.mainQuery = false
       }
     } else {
-      mainReq.makeQuery = mainReq.multiple ? gun.get(mainReq.mainHost).path(mainReq.mainPath) : gun.get(mainReq.mainHost)
       mainReq.mainQuery = true
     }
 
-    mainReq.queryMethod = method
-    mainReq.wantReq = headers.accept && headers.accept.includes('text/html')
-    mainReq.wantRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
-    if (mainReq.queryMethod === 'GET') {
-      mainReq.queryAlias = headers['x-alias']
-      mainReq.queryNot = headers['x-not'] ? JSON.parse(headers['x-not']) : null
-      mainReq.queryPaginate = headers['x-paginate'] ? JSON.parse(headers['x-paginate']) : null
-      mainReq.queryTimer = Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
-      mainReq.queryReg = !(mainReq.queryNot || mainReq.queryPaginate)
-    } else if (mainReq.queryMethod === 'PUT') {
-      mainReq.queryCreate = headers['x-create']
-      mainReq.queryLogin = headers['x-login']
-      mainReq.queryErr = !(mainReq.queryCreate || mainReq.queryLogin)
-      mainReq.queryReg = !(headers['x-set'] && JSON.parse(headers['x-set']))
-    } else if (mainReq.queryMethod === 'DELETE') {
-      mainReq.queryDelete = headers['x-delete']
-      mainReq.queryLogout = headers['x-logout']
-      mainReq.queryErr = !(mainReq.queryDelete || mainReq.queryLogout)
-      mainReq.queryReg = !(headers['x-unset'] && JSON.parse(headers['x-unset']))
-    }
-
     return mainReq
+  }
+
+  function queryizeReq(mainReq, user){
+    if(user){
+      return mainReq.multiple ? users[mainReq.mainHost].path(mainReq.mainPath) : users[mainReq.mainHost]
+    } else {
+      if (mainReq.mainHost.includes('.') || mainReq.mainHost.includes('-') || mainReq.mainHost.includes('_')) {
+        return mainReq.multiple ? gun.get('~' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~' + mainReq.mainHost)
+      } else {
+        return mainReq.multiple ? gun.get('~@' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~@' + mainReq.mainHost)
+      }
+    }
   }
 
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
 
     try {
-      const { hostname, pathname, protocol, searchParams } = new URL(url)
+      const { hostname, pathname, protocol } = new URL(url)
       let mainHostname = null
       if (hostname && hostname[0] === encodeType) {
         mainHostname = Buffer.from(hostname.slice(1), 'hex').toString('utf-8')
@@ -129,224 +107,208 @@ module.exports = function makeGunFetch (opts = {}) {
       }
 
       if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || mainHostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
-        const reqErr = { statusCode: 400, headers: {}, data: [] }
-        if (headers.accept && headers.accept.includes('text/html')) {
-          reqErr.data = ['<html><head><title>Gun</title></head><body><p>query is incorrect</p></body></html>']
-          reqErr.headers['Content-Type'] = 'text/html; charset=utf-8'
-        } else {
-          reqErr.data = [JSON.stringify('query is incorrect')]
-          reqErr.headers['Content-Type'] = 'application/json; charset=utf-8'
-        }
-        return reqErr
+        return { statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('query is incorrect')] }
       }
 
-      const req = formatReq(hostname, pathname, method, searchParams, headers)
-
-      const res = { statusCode: 0, headers: {}, data: [] }
-      switch (req.queryMethod) {
-        case 'GET': {
-          let mainData = null
-          if (req.mainQuery) {
-            if (req.queryReg) {
-              mainData = await new Promise((resolve) => {
-                req.makeQuery.once(found => { resolve(found) })
-              })
-            } else if (req.queryNot) {
-              mainData = await Promise.any([
-                new Promise((resolve) => {
-                  setTimeout(() => { resolve({ found: null, result: false }) }, req.queryTimer)
-                }),
-                new Promise((resolve) => {
-                  req.makeQuery.not(found => { resolve({ found, result: true }) })
-                })
-              ])
-            } else if (req.queryPaginate) {
-              mainData = await Promise.any([
-                new Promise((resolve) => {
-                  setTimeout(() => { resolve(undefined) }, req.queryTimer)
-                }),
-                new Promise((resolve) => {
-                  req.makeQuery.get(req.queryPaginate).once().map().once(found => { resolve(found) })
-                })
-              ])
-            } else {
-              mainData = undefined
-            }
-            if (mainData !== undefined) {
-              res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-              res.statusCode = 200
-            } else {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>Data is empty</p></body></html>'] : [JSON.stringify('Data is empty')]
-              res.statusCode = 400
-            }
-            res.headers['Content-Type'] = req.wantRes
-          } else {
-            if (req.queryAlias) {
-              if (users[req.queryAlias]) {
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>you are logged in as ${req.queryAlias}</p></body></html>`] : [JSON.stringify(`you are logged in as${req.queryAlias}`)]
-                res.statusCode = 200
-              } else {
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>you are not logged in as ${req.queryAlias}</p></body></html>`] : [JSON.stringify(`you are not logged in as ${req.queryAlias}`)]
-                res.statusCode = 400
-              }
-              res.headers['Content-Type'] = req.wantRes
-            } else {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>"x-alias" header was not used</p></body></html>'] : [JSON.stringify('"x-alias" header was not used')]
-              res.statusCode = 400
-              res.headers['Content-Type'] = req.wantRes
+      const main = formatReq(mainHostname, pathname)
+      // if(req.err){
+      //   return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(req.err)]}
+      // }
+      if(method === 'GET'){
+        if(main.mainQuery){
+          let gunQuery = null
+          // if this is a query for the user space, then we make sure the user is authenticated
+          if(headers['authorization']){
+            if(!users[main.mainHost] || !await SEA.verify(headers['authorization'], users[main.mainHost].check.pub)){
+              return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('either user is not logged in, or you are not verified')]}
             }
           }
-          break
-        }
-
-        case 'PUT': {
+          // if the user is authenticated, then we turn the request into a query
+          gunQuery = queryizeReq(main, headers['authorization'])
           let mainData = null
-          if (req.mainQuery) {
-            if (req.queryReg) {
-              const useBody = await getBody(body)
-              mainData = await new Promise((resolve) => {
-                req.makeQuery.put(useBody).once(found => { resolve(found) })
+          // if x-not or x-paginate is not sent, then we assume this is a regular query
+          if(!headers['x-not'] && !headers['x-paginate']){
+            mainData = await new Promise((resolve) => {
+              gunQuery.once(found => { resolve(found) })
+            })
+          } else if(headers['x-not'] && JSON.parse(headers['x-not'] === true)){
+            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            mainData = await Promise.any([
+              new Promise((resolve) => {
+                setTimeout(() => { resolve({ found: null, result: false }) }, queryTimer)
+              }),
+              new Promise((resolve) => {
+                gunQuery.not(found => { resolve({ found, result: true }) })
               })
-            } else {
-              const useBody = await getBody(body)
-              mainData = await new Promise((resolve) => {
-                req.makeQuery.set(useBody).once(found => { resolve(found) })
+            ])
+          } else if(headers['x-paginate'] && typeof(JSON.parse(headers['x-paginate'])) === 'object'){
+            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            mainData = await Promise.any([
+              new Promise((resolve) => {
+                setTimeout(() => { resolve(undefined) }, queryTimer)
+              }),
+              new Promise((resolve) => {
+                gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => { resolve(found) })
               })
-            }
-            if (mainData !== undefined) {
-              res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-              res.statusCode = 200
-            } else {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>Data is empty</p></body></html>'] : [JSON.stringify('Data is empty')]
-              res.statusCode = 400
-            }
-            res.headers['Content-Type'] = req.wantRes
+            ])
           } else {
-            if (req.queryErr) {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>"x-create" or "x-login" header is needed with the alias</p></body></html>'] : [JSON.stringify('"x-create" or "x-login" header is needed with the alias')]
-              res.statusCode = 400
-              res.headers['Content-Type'] = req.wantRes
-            } else if (req.queryCreate) {
-              const useBody = await getBody(body)
-              if (useBody) {
-                mainData = await new Promise((resolve) => {
-                  gun.user().create(req.queryCreate, useBody, ack => {
-                    resolve(ack)
-                  }, { already: false })
-                })
-                if (mainData.err) {
-                  res.statusCode = 400
-                  res.headers['Content-Type'] = req.wantRes
-                } else {
-                  res.statusCode = 200
-                  res.headers['Content-Type'] = req.wantRes
-                }
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
+            mainData = undefined
+          }
+          if(mainData){
+            return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+          } else {
+            return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('Data is empty')]}
+          }
+        } else {
+          if (headers['x-alias']) {
+            if (users[headers['x-alias']]) {
+              return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(`you are logged in as${req.queryAlias}`)]}
+            } else {
+              return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)]}
+            }
+          } else {
+            return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('"x-alias" header was not used')]}
+          }
+        }
+      } else if(method === 'PUT'){
+        if(main.mainQuery){
+          let gunQuery = null
+          if(headers['authorization']){
+            if(!users[main.mainHost] || !await SEA.verify(headers['authorization'], users[main.mainHost].check.pub)){
+              return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('either user is not logged in, or you are not verified')]}
+            }
+          }
+          gunQuery = queryizeReq(main, headers['authorization'])
+          if (!headers['x-set'] || !JSON.parse(headers['x-set'])) {
+            const useBody = await getBody(body)
+            mainData = await new Promise((resolve) => {
+              gunQuery.put(useBody).once(found => { resolve(found) })
+            })
+            return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+          } else {
+            const useBody = await getBody(body)
+            mainData = await new Promise((resolve) => {
+              gunQuery.set(useBody).once(found => { resolve(found) })
+            })
+            return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+          }
+        } else {
+          if(!headers['x-create'] && !headers['x-login']){
+            return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('"x-create" or "x-login" header is needed with the alias')]}
+          } else if(headers['x-create']){
+            const useBody = await getBody(body)
+            mainData = await new Promise((resolve) => {
+              gun.user().create(headers['x-create'], useBody, ack => {
+                resolve(ack)
+              }, { already: false })
+            })
+            if (mainData.err) {
+              return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData.err)]}
+            } else {
+              return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+            }
+          } else if(headers['x-login']){
+            const useBody = await getBody(body)
+            if (users[headers['x-login']]) {
+              if(users[headers['x-login']].check.hash === await SEA.work(headers['x-login'], useBody)){
+                return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(users[headers['x-login']].check.token)]}
               } else {
-                res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>'] : [JSON.stringify('password is needed in the body')]
-                res.statusCode = 400
-                res.headers['Content-Type'] = req.wantRes
+                return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('password is incorrect')]}
               }
-            } else if (req.queryLogin) {
-              const useBody = await getBody(body)
-              if (useBody) {
-                if (users[req.queryLogin]) {
-                  res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({ err: 'User is currently logged in' })}</p></body></html>`] : [JSON.stringify({ err: 'User is currently logged in' })]
-                  res.statusCode = 400
-                  res.headers['Content-Type'] = req.wantRes
+            } else {
+              users[headers['x-login']] = gun.user()
+              mainData = await new Promise((resolve) => {
+                users[headers['x-login']].auth(headers['x-login'], useBody, ack => {
+                  resolve(ack)
+                })
+              })
+              if (mainData.err) {
+                users[headers['x-login']].leave()
+                delete users[headers['x-login']]
+                return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData.err)]}
+              } else {
+                users[headers['x-login']].check = {}
+                users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
+                users[headers['x-login']].check.pub = mainData.sea.pub
+                users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
+                return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(users[headers['x-login']].check.token)]}
+              }
+            }
+          }
+        }
+      } else if(method === 'DELETE'){
+        if(main.mainQuery){
+          let gunQuery = null
+          if(headers['authorization']){
+            if(!users[main.mainHost] || !await SEA.verify(headers['authorization'], users[main.mainHost].check.pub)){
+              return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('either user is not logged in, or you are not verified')]}
+            }
+          }
+          gunQuery = queryizeReq(main, headers['authorization'])
+          if (!headers['x-unset'] || !JSON.parse(headers['x-unset'])) {
+            mainData = await new Promise((resolve) => {
+              gunQuery.put(null).once(found => { resolve(found) })
+            })
+            return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+          } else {
+            const useBody = await getBody(body)
+            mainData = await new Promise((resolve) => {
+              gunQuery.unset(useBody).once(found => { resolve(found) })
+            })
+            return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
+          }
+        } else {
+          if (!headers['x-delete'] && !headers['x-logout']) {
+            return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')]}
+          } else if (headers['x-logout']) {
+            if (users[headers['x-logout']]) {
+              if(headers['authorization']){
+                if(!await SEA.verify(headers['authorization'], users[headers['x-logout']].check.pub)){
+                  return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('either user is not logged in, or you are not verified')]}
                 } else {
-                  users[req.queryLogin] = gun.user()
+                  users[headers['x-logout']].leave()
+                  delete users[headers['x-logout']]
+                  return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify({ message: 'User has been logged out' })]}
+                }
+              } else {
+                return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('the header x-authorization is required')]}
+              }
+            } else {
+              return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('user is currently logged out')]}
+            }
+          } else if (headers['x-delete']) {
+            if (users[headers['x-delete']]) {
+              if(headers['authorization']){
+                if(!await SEA.verify(headers['authorization'], users[headers['x-logout']].check.pub)){
+                  return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('either user is not logged in, or you are not verified')]}
+                } else {
+                  users[headers['x-logout']].leave()
+                  delete users[headers['x-logout']]
+                  const useBody = await getBody(body)
                   mainData = await new Promise((resolve) => {
-                    users[req.queryLogin].auth(body.user, body.pass, ack => {
-                      if (ack.err) {
-                        resolve(ack)
-                      } else {
-                        resolve({ soul: ack.soul })
-                      }
+                    gun.user().delete(headers['x-delete'], useBody, ack => {
+                      resolve(ack)
                     })
                   })
-                  if (mainData.err) {
-                    // users[body.user].leave()
-                    delete users[req.queryLogin]
-                    res.statusCode = 400
-                    res.headers['Content-Type'] = req.wantRes
-                  } else {
-                    res.statusCode = 200
-                    res.headers['Content-Type'] = req.wantRes
-                  }
-                  res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
+                  return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
                 }
               } else {
-                res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>'] : [JSON.stringify('password is needed in the body')]
-                res.statusCode = 400
-                res.headers['Content-Type'] = req.wantRes
+                return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('the header x-authorization is required')]}
               }
-            }
-          }
-          break
-        }
-
-        case 'DELETE': {
-          let mainData = null
-          if (req.mainQuery) {
-            if (req.queryReg) {
-              mainData = await new Promise((resolve) => {
-                req.makeQuery.put(null).once(found => { resolve(found) })
-              })
             } else {
               const useBody = await getBody(body)
               mainData = await new Promise((resolve) => {
-                req.makeQuery.unset(useBody).once(found => { resolve(found) })
-              })
-            }
-            if (mainData !== undefined) {
-              res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-              res.statusCode = 200
-            } else {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>Data is empty</p></body></html>'] : [JSON.stringify('Data is empty')]
-              res.statusCode = 400
-            }
-            res.headers['Content-Type'] = req.wantRes
-          } else {
-            if (req.queryErr) {
-              res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>"x-delete" or "x-logout" header is needed with the alias</p></body></html>'] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')]
-              res.statusCode = 400
-              res.headers['Content-Type'] = req.wantRes
-            } else if (req.queryLogout) {
-              if (!users[req.queryLogout]) {
-                mainData = { err: 'User is not logged in' }
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({ err: 'User is not logged in' })}</p></body></html>`] : [JSON.stringify({ err: 'User is not logged in' })]
-                res.statusCode = 400
-                res.headers['Content-Type'] = req.wantRes
-              } else {
-                users[req.queryLogout].leave()
-                delete users[req.queryLogout]
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify({ message: 'User has been logged out' })}</p></body></html>`] : [JSON.stringify({ message: 'User has been logged out' })]
-                res.statusCode = 200
-                res.headers['Content-Type'] = req.wantRes
-              }
-            } else if (req.queryDelete) {
-              const useBody = await getBody(body)
-              if (useBody) {
-                mainData = await new Promise((resolve) => {
-                  gun.user().delete(req.queryDelete, useBody, ack => {
-                    resolve(ack)
-                  })
+                gun.user().delete(headers['x-delete'], useBody, ack => {
+                  resolve(ack)
                 })
-                res.data = req.wantReq ? [`<html><head><title>Gun</title></head><body><p>${JSON.stringify(mainData)}</p></body></html>`] : [JSON.stringify(mainData)]
-                res.statusCode = 200
-                res.headers['Content-Type'] = req.wantRes
-              } else {
-                res.data = req.wantReq ? ['<html><head><title>Gun</title></head><body><p>password is needed in the body</p></body></html>'] : [JSON.stringify('password is needed in the body')]
-                res.statusCode = 400
-                res.headers['Content-Type'] = req.wantRes
-              }
+              })
+              return {statusCode: 200, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(mainData)]}
             }
           }
-          break
         }
+      } else {
+        return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify('method is not supported')]}
       }
-      return res
     } catch (e) {
       return { statusCode: 500, headers, data: [e.stack] }
     }
