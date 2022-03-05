@@ -133,32 +133,55 @@ module.exports = function makeGunFetch (opts = {}) {
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           if (!headers['x-not'] && !headers['x-paginate']) {
             mainData = await new Promise((resolve) => {
-              gunQuery.once(found => { resolve(found) })
+              gunQuery.once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                resolve(found)
+              })
             })
           } else if (headers['x-not'] && JSON.parse(headers['x-not'] === true)) {
-            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            // const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
             mainData = await Promise.any([
               new Promise((resolve) => {
-                setTimeout(() => { resolve({ found: null, result: false }) }, queryTimer)
+                setTimeout(() => { resolve({ found: null, result: false }) }, 5000)
               }),
               new Promise((resolve) => {
                 gunQuery.not(found => { resolve({ found, result: true }) })
               })
             ])
           } else if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
-            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
-            mainData = await Promise.any([
-              new Promise((resolve) => {
-                setTimeout(() => { resolve(undefined) }, queryTimer)
-              }),
-              new Promise((resolve) => {
-                gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => { resolve(found) })
+            // const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            // mainData = await Promise.any([
+            //   new Promise((resolve) => {
+            //     setTimeout(() => { resolve(undefined) }, queryTimer)
+            //   }),
+            //   new Promise((resolve) => {
+            //     gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => { resolve(found) })
+            //   })
+            // ])
+            mainData = await new Promise((resolve) => {
+              const arr = []
+              let len = arr.length
+              gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                arr.push(found)
               })
-            ])
+              const check = setInterval(() => {
+                if(len === arr.length){
+                  clearInterval(check)
+                  resolve(arr)
+                } else {
+                  len = arr.length
+                }
+              }, 1000)
+            })
           } else {
             mainData = undefined
           }
-          if (mainData) {
+          if (mainData !== undefined) {
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
@@ -187,15 +210,28 @@ module.exports = function makeGunFetch (opts = {}) {
           if (!headers['x-set'] || !JSON.parse(headers['x-set'])) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
-              gunQuery.put(useBody).once(found => { resolve(found) })
+              gunQuery.put(useBody).once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                resolve(found)
+              })
             })
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
           } else {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
-              gunQuery.set(useBody).once(found => { resolve(found) })
+              gunQuery.set(useBody).once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                resolve(found)
+              })
             })
+          }
+          if(mainData !== undefined){
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+          } else {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
           }
         } else {
           let mainData = null
@@ -254,15 +290,28 @@ module.exports = function makeGunFetch (opts = {}) {
           gunQuery = queryizeReq(main, headers.authorization)
           if (!headers['x-unset'] || !JSON.parse(headers['x-unset'])) {
             mainData = await new Promise((resolve) => {
-              gunQuery.put(null).once(found => { resolve(found) })
+              gunQuery.put(null).once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                resolve(found)
+              })
             })
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
           } else {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
-              gunQuery.unset(useBody).once(found => { resolve(found) })
+              gunQuery.unset(useBody).once(found => {
+                if(found['_']){
+                  delete found['_']
+                }
+                resolve(found)
+              })
             })
+          }
+          if(mainData !== undefined){
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+          } else {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
           }
         } else {
           let mainData = null
