@@ -134,9 +134,9 @@ module.exports = function makeGunFetch (opts = {}) {
           if (!headers['x-not'] && !headers['x-paginate']) {
             mainData = await new Promise((resolve) => {
               gunQuery.once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
                 resolve(found)
               })
             })
@@ -164,9 +164,12 @@ module.exports = function makeGunFetch (opts = {}) {
               const arr = []
               let len = arr.length
               gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
+                // for(const prop in found){
+                //   if(found[prop]['#']){}
+                // }
                 arr.push(found)
               })
               const check = setInterval(() => {
@@ -211,9 +214,9 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
               gunQuery.put(useBody).once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
                 resolve(found)
               })
             })
@@ -221,9 +224,9 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
               gunQuery.set(useBody).once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
                 resolve(found)
               })
             })
@@ -291,9 +294,9 @@ module.exports = function makeGunFetch (opts = {}) {
           if (!headers['x-unset'] || !JSON.parse(headers['x-unset'])) {
             mainData = await new Promise((resolve) => {
               gunQuery.put(null).once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
                 resolve(found)
               })
             })
@@ -301,9 +304,9 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
               gunQuery.unset(useBody).once(found => {
-                if(found['_']){
-                  delete found['_']
-                }
+                // if(found['_']){
+                //   delete found['_']
+                // }
                 resolve(found)
               })
             })
