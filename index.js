@@ -141,7 +141,7 @@ module.exports = function makeGunFetch (opts = {}) {
               })
             })
           } else if (headers['x-not'] && JSON.parse(headers['x-not'] === true)) {
-            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 2500
+            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 2500
             mainData = await Promise.any([
               new Promise((resolve) => {
                 setTimeout(() => { resolve({ found: null, result: false }) }, queryTimer)
@@ -151,7 +151,7 @@ module.exports = function makeGunFetch (opts = {}) {
               })
             ])
           } else if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
-            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 2500
+            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 2500
             // mainData = await Promise.any([
             //   new Promise((resolve) => {
             //     setTimeout(() => { resolve(undefined) }, queryTimer)
