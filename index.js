@@ -141,17 +141,17 @@ module.exports = function makeGunFetch (opts = {}) {
               })
             })
           } else if (headers['x-not'] && JSON.parse(headers['x-not'] === true)) {
-            // const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 2500
             mainData = await Promise.any([
               new Promise((resolve) => {
-                setTimeout(() => { resolve({ found: null, result: false }) }, 5000)
+                setTimeout(() => { resolve({ found: null, result: false }) }, queryTimer)
               }),
               new Promise((resolve) => {
                 gunQuery.not(found => { resolve({ found, result: true }) })
               })
             ])
           } else if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
-            // const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            const queryTimer = headers['x-timer'] && Number.isInteger(JSON.parse(headers['x-timer'])) && JSON.parse(headers['x-timer']) ? JSON.parse(headers['x-timer']) * 1000 : 2500
             // mainData = await Promise.any([
             //   new Promise((resolve) => {
             //     setTimeout(() => { resolve(undefined) }, queryTimer)
@@ -176,7 +176,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 } else {
                   len = arr.length
                 }
-              }, 1000)
+              }, queryTimer)
             })
           } else {
             mainData = undefined
