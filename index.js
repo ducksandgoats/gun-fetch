@@ -248,7 +248,7 @@ module.exports = function makeGunFetch (opts = {}) {
               }, { already: false })
             })
             if (mainData.err) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData.err)] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
             } else {
               return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
             }
@@ -270,7 +270,7 @@ module.exports = function makeGunFetch (opts = {}) {
               if (mainData.err) {
                 users[headers['x-login']].leave()
                 delete users[headers['x-login']]
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData.err)] }
+                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
               } else {
                 users[headers['x-login']].check = {}
                 users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
