@@ -338,23 +338,24 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           } else if (headers['x-delete']) {
             if (users[headers['x-delete']]) {
-              if (headers.authorization) {
-                if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
-                  return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
-                } else {
-                  users[headers['x-logout']].leave()
-                  delete users[headers['x-logout']]
-                  const useBody = await getBody(body)
-                  mainData = await new Promise((resolve) => {
-                    gun.user().delete(headers['x-delete'], useBody, ack => {
-                      resolve(ack)
-                    })
-                  })
-                  return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
-                }
-              } else {
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('the header x-authorization is required')] }
-              }
+              // if (headers.authorization) {
+              //   if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
+              //     return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+              //   } else {
+              //     users[headers['x-logout']].leave()
+              //     delete users[headers['x-logout']]
+              //     const useBody = await getBody(body)
+              //     mainData = await new Promise((resolve) => {
+              //       gun.user().delete(headers['x-delete'], useBody, ack => {
+              //         resolve(ack)
+              //       })
+              //     })
+              //     return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+              //   }
+              // } else {
+              //   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('user is currently logged in')] }
+              // }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('user is currently logged in')] }
             } else {
               const useBody = await getBody(body)
               mainData = await new Promise((resolve) => {
