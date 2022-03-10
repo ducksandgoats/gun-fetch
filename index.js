@@ -122,7 +122,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers.authorization) {
-            if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
@@ -203,7 +203,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers.authorization) {
-            if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
@@ -284,7 +284,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers.authorization) {
-            if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
@@ -321,7 +321,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-logout']) {
             if (users[headers['x-logout']]) {
               if (headers.authorization) {
-                if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
+                if (!Boolean(await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
                 } else {
                   users[headers['x-logout']].leave()
@@ -337,7 +337,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-delete']) {
             if (users[headers['x-delete']]) {
               // if (headers.authorization) {
-              //   if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
+              //   if (!Boolean(await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub))) {
               //     return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
               //   } else {
               //     users[headers['x-logout']].leave()
