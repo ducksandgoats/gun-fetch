@@ -111,13 +111,11 @@ module.exports = function makeGunFetch (opts = {}) {
       }
 
       if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || mainHostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
-        return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('query is incorrect')] }
+        return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('query is incorrect')] }
       }
 
       const main = formatReq(mainHostname, pathname)
-      // if(req.err){
-      //   return {statusCode: 400, headers: {'Content-Type': 'application/json; charset=utf-8'}, data: [JSON.stringify(req.err)]}
-      // }
+
       if (method === 'GET') {
         if (main.mainQuery) {
           let gunQuery = null
@@ -125,7 +123,7 @@ module.exports = function makeGunFetch (opts = {}) {
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers.authorization) {
             if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
@@ -185,19 +183,19 @@ module.exports = function makeGunFetch (opts = {}) {
             mainData = undefined
           }
           if (mainData !== undefined) {
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
           }
         } else {
           if (headers['x-alias']) {
             if (users[headers['x-alias']]) {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(`you are logged in as${headers['x-alias']}`)] }
+              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(`you are logged in as${headers['x-alias']}`)] }
             } else {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(`you are not logged in as ${headers['x-alias']}`)] }
             }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('"x-alias" header was not used')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-alias" header was not used')] }
           }
         }
       } else if (method === 'PUT') {
@@ -206,7 +204,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           if (headers.authorization) {
             if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           gunQuery = queryizeReq(main, headers.authorization)
@@ -232,14 +230,14 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           }
           if(mainData !== undefined){
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
           }
         } else {
           let mainData = null
           if (!headers['x-create'] && !headers['x-login']) {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('"x-create" or "x-login" header is needed with the alias')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-create" or "x-login" header is needed with the alias')] }
           } else if (headers['x-create']) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
@@ -248,17 +246,17 @@ module.exports = function makeGunFetch (opts = {}) {
               }, { already: false })
             })
             if (mainData.err) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
             } else {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
             }
           } else if (headers['x-login']) {
             const useBody = await getBody(body)
             if (users[headers['x-login']]) {
               if (users[headers['x-login']].check.hash === await SEA.work(headers['x-login'], useBody)) {
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(users[headers['x-login']].check.token)] }
+                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(users[headers['x-login']].check.token)] }
               } else {
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('password is incorrect')] }
+                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('password is incorrect')] }
               }
             } else {
               users[headers['x-login']] = gun.user()
@@ -270,13 +268,13 @@ module.exports = function makeGunFetch (opts = {}) {
               if (mainData.err) {
                 users[headers['x-login']].leave()
                 delete users[headers['x-login']]
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
               } else {
                 users[headers['x-login']].check = {}
                 users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
                 users[headers['x-login']].check.pub = mainData.sea.pub
                 users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(users[headers['x-login']].check.token)] }
+                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(users[headers['x-login']].check.token)] }
               }
             }
           }
@@ -287,7 +285,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           if (headers.authorization) {
             if (!users[main.mainHost] || !await SEA.verify(headers.authorization, users[main.mainHost].check.pub)) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           gunQuery = queryizeReq(main, headers.authorization)
@@ -312,35 +310,35 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           }
           if(mainData !== undefined){
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
           }
         } else {
           let mainData = null
           if (!headers['x-delete'] && !headers['x-logout']) {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
             if (users[headers['x-logout']]) {
               if (headers.authorization) {
                 if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
-                  return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+                  return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
                 } else {
                   users[headers['x-logout']].leave()
                   delete users[headers['x-logout']]
-                  return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify({ message: 'User has been logged out' })] }
+                  return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({ message: 'User has been logged out' }))] }
                 }
               } else {
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('the header x-authorization is required')] }
+                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('the header x-authorization is required')] }
               }
             } else {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('user is currently logged out')] }
+              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged out')] }
             }
           } else if (headers['x-delete']) {
             if (users[headers['x-delete']]) {
               // if (headers.authorization) {
               //   if (!await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub)) {
-              //     return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('either user is not logged in, or you are not verified')] }
+              //     return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
               //   } else {
               //     users[headers['x-logout']].leave()
               //     delete users[headers['x-logout']]
@@ -350,12 +348,12 @@ module.exports = function makeGunFetch (opts = {}) {
               //         resolve(ack)
               //       })
               //     })
-              //     return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+              //     return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
               //   }
               // } else {
-              //   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('user is currently logged in')] }
+              //   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged in')] }
               // }
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('user is currently logged in')] }
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged in')] }
             } else {
               const useBody = await getBody(body)
               mainData = await new Promise((resolve) => {
@@ -363,12 +361,12 @@ module.exports = function makeGunFetch (opts = {}) {
                   resolve(ack)
                 })
               })
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify(mainData)] }
+              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
             }
           }
         }
       } else {
-        return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [JSON.stringify('method is not supported')] }
+        return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('method is not supported')] }
       }
     } catch (e) {
       return { statusCode: 500, headers, data: [e.stack] }
