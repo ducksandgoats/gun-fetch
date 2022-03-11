@@ -230,6 +230,17 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           }
           if(mainData !== undefined){
+            if(headers['x-path']){
+              await new Promise((resolve) => {
+                gun.path(headers['x-path']).put(mainData).once(data => resolve(data))
+              })
+            } else if(headers['x-paths'] && Array.isArray(JSON.parse(headers['x-paths']))){
+              for(const headerPath of JSON.parse(headers['x-paths'])){
+                await new Promise((resolve) => {
+                  gun.path(headerPath).put(mainData).once(data => resolve(data))
+                })
+              }
+            }
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
@@ -310,6 +321,17 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           }
           if(mainData !== undefined){
+            if(headers['x-path']){
+              await new Promise((resolve) => {
+                gun.path(headers['x-path']).put(null).once(data => resolve(data))
+              })
+            } else if(headers['x-paths'] && Array.isArray(JSON.parse(headers['x-paths']))){
+              for(const headerPath of JSON.parse(headers['x-paths'])){
+                await new Promise((resolve) => {
+                  gun.path(headerPath).put(null).once(data => resolve(data))
+                })
+              }
+            }
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
