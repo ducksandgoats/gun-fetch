@@ -288,7 +288,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
                 users[headers['x-login']].check.pub = mainData.sea.pub
                 users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(users[headers['x-login']].check.token)] }
+                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, address: users[headers['x-login']].check.pub}))] }
               }
             }
           }
