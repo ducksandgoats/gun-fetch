@@ -3,30 +3,33 @@ const Gun = require('gun')
 const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
+const http = require('http')
+const https = require('https')
 require('gun/lib/path')
 require('gun/lib/not')
 require('gun/lib/unset')
 const SEA = Gun.SEA
 
-const LIST_OF_URLS = ['https://gun-manhattan.herokuapp.com/gun',
-  'https://us-west.xerberus.net/gun',
-  'http://gun-matrix.herokuapp.com/gun',
-  'https://gun-ams1.maddiex.wtf:443/gun',
-  'https://gun-sjc1.maddiex.wtf:443/gun',
-  'https://dletta.rig.airfaas.com/gun',
-  'https://mg-gun-manhattan.herokuapp.com/gun',
-  'https://gunmeetingserver.herokuapp.com/gun',
-  'https://e2eec.herokuapp.com/gun',
-  'https://gun-us.herokuapp.com/gun',
-  'https://gun-eu.herokuapp.com/gun',
-  'https://gunjs.herokuapp.com/gun',
-  'https://www.raygun.live/gun',
-  'https://gun-armitro.herokuapp.com/',
-  'https://fire-gun.herokuapp.com/gun']
+// const LIST_OF_URLS = [
+//   'https://gun-manhattan.herokuapp.com/gun',
+//   'https://us-west.xerberus.net/gun',
+//   'http://gun-matrix.herokuapp.com/gun',
+//   'https://gun-ams1.maddiex.wtf:443/gun',
+//   'https://gun-sjc1.maddiex.wtf:443/gun',
+//   'https://dletta.rig.airfaas.com/gun',
+//   'https://mg-gun-manhattan.herokuapp.com/gun',
+//   'https://gunmeetingserver.herokuapp.com/gun',
+//   'https://e2eec.herokuapp.com/gun',
+//   'https://gun-us.herokuapp.com/gun',
+//   'https://gun-eu.herokuapp.com/gun',
+//   'https://gunjs.herokuapp.com/gun',
+//   'https://www.raygun.live/gun',
+//   'https://gun-armitro.herokuapp.com/',
+//   'https://fire-gun.herokuapp.com/gun'
+// ]
 
 const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
-  peers: LIST_OF_URLS,
   file: STORAGE_FOLDER
 }
 
@@ -41,7 +44,7 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const gun = Gun(finalOpts)
 
-  const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE']
+  const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
   // 'POST', 'PATCH'
   const encodeType = '-'
   const hostType = '_'
@@ -98,6 +101,18 @@ module.exports = function makeGunFetch (opts = {}) {
     }
   }
 
+  // function checkHttpPeer(url){
+  //   return new Promise((resolve) => {
+  //     http.get(url, res => resolve(res.statusCode))
+  //   })
+  // }
+
+  // function checkHttpsPeer(url){
+  //   return new Promise((resolve) => {
+  //     https.get(url, res => resolve(res.statusCode))
+  //   })
+  // }
+
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
 
@@ -116,7 +131,58 @@ module.exports = function makeGunFetch (opts = {}) {
 
       const main = formatReq(mainHostname, pathname)
 
-      if (method === 'GET') {
+      if(method === 'HEAD'){
+        if (main.mainQuery) {
+          let gunQuery = null
+          let mainData = null
+          // if this is a query for the user space, then we make sure the user is authenticated
+          if (headers.authorization) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
+            }
+          }
+          // if the user is authenticated, then we turn the request into a query
+          gunQuery = queryizeReq(main, headers.authorization)
+          // if x-not or x-paginate is not sent, then we assume this is a regular query
+          mainData = await new Promise((resolve) => {
+            gunQuery.once(found => {
+              // if(found['_']){
+              //   delete found['_']
+              // }
+              resolve(found)
+            })
+          })
+          if (mainData !== undefined) {
+            return { statusCode: 200, headers: {}, data: [] }
+          } else {
+            return { statusCode: 400, headers: {}, data: [] }
+          }
+        } else {
+          if (headers['x-peer']) {
+            if (headers['x-peer'].endsWith('/gun')) {
+              gun.opt({peers: [headers['x-peer']]})
+              return { statusCode: 200, headers: {}, data: [] }
+            } else {
+              return { statusCode: 400, headers: {}, data: [] }
+            }
+          } else if(headers['x-peers']){
+            let peersArr = null
+            try {
+              peersArr = JSON.parse(headers['x-peers']).filter(data => {return data.endsWith('/gun')})
+            } catch (err) {
+              console.error(err)
+            }
+            if(peersArr && peersArr.length){
+              gun.opt({peers: peersArr})
+              return { statusCode: 200, headers: {}, data: [] }
+            } else {
+              return { statusCode: 400, headers: {}, data: [] }
+            }
+          } else {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [] }
+          }
+        }
+      } else if (method === 'GET') {
         if (main.mainQuery) {
           let gunQuery = null
           let mainData = null
