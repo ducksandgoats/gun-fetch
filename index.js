@@ -191,7 +191,29 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: {}, data: [] }
           }
         } else {
-          if (headers['x-peer']) {
+          if(headers['x-node']){
+            if (!LIST_OF_URLS.includes(headers['x-node'])) {
+              return { statusCode: 400, headers: {}, data: [] }
+            } else {
+              return { statusCode: 200, headers: {}, data: [] }
+            }
+          } else if(headers['x-nodes']){
+            let doesNotHaveIt = false
+            try {
+              for(const relay of JSON.parse(headers['x-nodes'])){
+                if(!LIST_OF_URLS.includes(relay)){
+                  doesNotHaveIt = true
+                }
+              }
+            } catch (err) {
+              console.error(err)
+            }
+            if (doesNotHaveIt) {
+              return { statusCode: 400, headers: {}, data: [] }
+            } else {
+              return { statusCode: 200, headers: {}, data: [] }
+            }
+          } else if (headers['x-peer']) {
             if (!headers['x-peer'].endsWith('/gun') || LIST_OF_URLS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
               return { statusCode: 400, headers: {}, data: [] }
             } else {
@@ -200,13 +222,17 @@ module.exports = function makeGunFetch (opts = {}) {
               return { statusCode: 200, headers: {}, data: [] }
             }
           } else if(headers['x-peers']){
-            let peersArr = null
+            const peersArr = []
             try {
-              peersArr = JSON.parse(headers['x-peers']).filter(async (data) => {return data.endsWith('/gun') && !LIST_OF_URLS.includes(data) && await checkPeer(data)})
+              for(const relay of JSON.parse(headers['x-peers'])){
+                if(relay.endsWith('/gun') && !LIST_OF_URLS.includes(relay) && await checkPeer(relay)){
+                  peersArr.push(relay)
+                }
+              }
             } catch (err) {
               console.error(err)
             }
-            if(!peersArr || !peersArr.length){
+            if(!peersArr.length){
               return { statusCode: 400, headers: {}, data: [] }
             } else {
               LIST_OF_URLS.push(...peersArr)
