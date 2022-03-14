@@ -133,6 +133,16 @@ module.exports = function makeGunFetch (opts = {}) {
     }
   }
 
+function isURL(url){
+  try {
+    const checkUrl = new URL(url)
+    return (checkUrl.protocol === 'https' || checkUrl.protocol === 'http') && checkUrl.pathname === '/gun'
+  } catch (err) {
+    console.error(err)
+    return null
+  }
+}
+
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
 
@@ -180,39 +190,39 @@ module.exports = function makeGunFetch (opts = {}) {
         } else {
           if(headers['x-node']){
             if (!LIST_OF_URLS.includes(headers['x-node'])) {
-              return { statusCode: 400, headers: {}, data: [] }
+              return { statusCode: 400, headers: {'X-Node': headers['x-node']}, data: [] }
             } else {
-              return { statusCode: 200, headers: {}, data: [] }
+              return { statusCode: 200, headers: {'X-Node': headers['x-node']}, data: [] }
             }
           } else if(headers['x-nodes']){
-            let doesNotHaveIt = false
+            const doesNotHaveIt = []
             try {
               for(const relay of JSON.parse(headers['x-nodes'])){
                 if(!LIST_OF_URLS.includes(relay)){
-                  doesNotHaveIt = true
+                  doesNotHaveIt.push(relay)
                 }
               }
             } catch (err) {
               console.error(err)
             }
-            if (doesNotHaveIt) {
-              return { statusCode: 400, headers: {}, data: [] }
+            if (doesNotHaveIt.length) {
+              return { statusCode: 400, headers: {'X-Nodes': JSON.stringify(doesNotHaveIt)}, data: [] }
             } else {
-              return { statusCode: 200, headers: {}, data: [] }
+              return { statusCode: 200, headers: {'X-Nodes': headers['x-nodes']}, data: [] }
             }
           } else if (headers['x-peer']) {
-            if (!headers['x-peer'].endsWith('/gun') || LIST_OF_URLS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
-              return { statusCode: 400, headers: {}, data: [] }
+            if (!isURL(headers['x-peer']) || LIST_OF_URLS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
+              return { statusCode: 400, headers: {'X-Peer': headers['x-peer']}, data: [] }
             } else {
               LIST_OF_URLS.push(headers['x-peer'])
               gun.opt({peers: [headers['x-peer']]})
-              return { statusCode: 200, headers: {}, data: [] }
+              return { statusCode: 200, headers: {'X-Peer': headers['x-peer']}, data: [] }
             }
           } else if(headers['x-peers']){
             const peersArr = []
             try {
               for(const relay of JSON.parse(headers['x-peers'])){
-                if(relay.endsWith('/gun') && !LIST_OF_URLS.includes(relay) && await checkPeer(relay)){
+                if(isURL(relay) && !LIST_OF_URLS.includes(relay) && await checkPeer(relay)){
                   peersArr.push(relay)
                 }
               }
@@ -220,11 +230,11 @@ module.exports = function makeGunFetch (opts = {}) {
               console.error(err)
             }
             if(!peersArr.length){
-              return { statusCode: 400, headers: {}, data: [] }
+              return { statusCode: 400, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             } else {
               LIST_OF_URLS.push(...peersArr)
               gun.opt({peers: peersArr})
-              return { statusCode: 200, headers: {}, data: [] }
+              return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [] }
