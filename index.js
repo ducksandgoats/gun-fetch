@@ -10,28 +10,15 @@ require('gun/lib/not')
 require('gun/lib/unset')
 const SEA = Gun.SEA
 
-// const LIST_OF_URLS = [
-//   'https://gun-manhattan.herokuapp.com/gun',
-//   'https://us-west.xerberus.net/gun',
-//   'http://gun-matrix.herokuapp.com/gun',
-//   'https://gun-ams1.maddiex.wtf:443/gun',
-//   'https://gun-sjc1.maddiex.wtf:443/gun',
-//   'https://dletta.rig.airfaas.com/gun',
-//   'https://mg-gun-manhattan.herokuapp.com/gun',
-//   'https://gunmeetingserver.herokuapp.com/gun',
-//   'https://e2eec.herokuapp.com/gun',
-//   'https://gun-us.herokuapp.com/gun',
-//   'https://gun-eu.herokuapp.com/gun',
-//   'https://gunjs.herokuapp.com/gun',
-//   'https://www.raygun.live/gun',
-//   'https://gun-armitro.herokuapp.com/',
-//   'https://fire-gun.herokuapp.com/gun'
-// ]
-
-const LIST_OF_URLS = []
+const LIST_OF_URLS = [
+  'https://relay.peer.ooo/gun',
+  'https://gunjs.herokuapp.com/gun',
+  'https://fire-gun.herokuapp.com/gun'
+]
 
 const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
+  peers: LIST_OF_URLS,
   file: STORAGE_FOLDER
 }
 
