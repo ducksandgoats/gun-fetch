@@ -28,6 +28,8 @@ const SEA = Gun.SEA
 //   'https://fire-gun.herokuapp.com/gun'
 // ]
 
+const LIST_OF_URLS = []
+
 const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
   file: STORAGE_FOLDER
@@ -103,13 +105,13 @@ module.exports = function makeGunFetch (opts = {}) {
 
   // function checkHttpPeer(url){
   //   return new Promise((resolve) => {
-  //     http.get(url, res => resolve(res.statusCode))
+  //     http.get(url, res => resolve(res.statusCode === 200))
   //   })
   // }
 
   // function checkHttpsPeer(url){
   //   return new Promise((resolve) => {
-  //     https.get(url, res => resolve(res.statusCode))
+  //     https.get(url, res => resolve(res.statusCode === 200))
   //   })
   // }
 
@@ -159,24 +161,26 @@ module.exports = function makeGunFetch (opts = {}) {
           }
         } else {
           if (headers['x-peer']) {
-            if (headers['x-peer'].endsWith('/gun')) {
+            if (!headers['x-peer'].endsWith('/gun') || LIST_OF_URLS.includes(headers['x-peer'])) {
+              return { statusCode: 400, headers: {}, data: [] }
+            } else {
+              LIST_OF_URLS.push(headers['x-peer'])
               gun.opt({peers: [headers['x-peer']]})
               return { statusCode: 200, headers: {}, data: [] }
-            } else {
-              return { statusCode: 400, headers: {}, data: [] }
             }
           } else if(headers['x-peers']){
             let peersArr = null
             try {
-              peersArr = JSON.parse(headers['x-peers']).filter(data => {return data.endsWith('/gun')})
+              peersArr = JSON.parse(headers['x-peers']).filter(data => {return data.endsWith('/gun') && !LIST_OF_URLS.includes(data)})
             } catch (err) {
               console.error(err)
             }
-            if(peersArr && peersArr.length){
+            if(!peersArr || !peersArr.length){
+              return { statusCode: 400, headers: {}, data: [] }
+            } else {
+              LIST_OF_URLS.push(...peersArr)
               gun.opt({peers: peersArr})
               return { statusCode: 200, headers: {}, data: [] }
-            } else {
-              return { statusCode: 400, headers: {}, data: [] }
             }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [] }
