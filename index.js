@@ -237,7 +237,7 @@ function isURL(url){
               return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [] }
+            return { statusCode: 400, headers: {}, data: [] }
           }
         }
       } else if (method === 'GET') {
