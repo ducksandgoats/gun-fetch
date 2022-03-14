@@ -222,7 +222,9 @@ function isURL(url){
             const peersArr = []
             try {
               for(const relay of JSON.parse(headers['x-peers'])){
-                if(isURL(relay) && !LIST_OF_URLS.includes(relay) && await checkPeer(relay)){
+                if(!isURL(relay) || LIST_OF_URLS.includes(relay) || !await checkPeer(relay)){
+                  continue
+                } else {
                   peersArr.push(relay)
                 }
               }
