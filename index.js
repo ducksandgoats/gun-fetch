@@ -103,17 +103,48 @@ module.exports = function makeGunFetch (opts = {}) {
     }
   }
 
-  // function checkHttpPeer(url){
+  // function checkPeer(url){
+  //   if(url.startsWith('https')){
+  //     return new Promise((resolve) => {
+  //       https.get(url, res => {
+  //         res.resume()
+  //         resolve(res.statusCode === 200)
+  //       })
+  //     })
+  //   } else if(url.startsWith('http')){
+  //     return new Promise((resolve) => {
+  //       http.get(url, res => {
+  //         res.resume()
+  //         resolve(res.statusCode === 200)
+  //       })
+  //     })
+  //   } else {
+  //     return null
+  //   }
   //   return new Promise((resolve) => {
   //     http.get(url, res => resolve(res.statusCode === 200))
   //   })
   // }
 
-  // function checkHttpsPeer(url){
-  //   return new Promise((resolve) => {
-  //     https.get(url, res => resolve(res.statusCode === 200))
-  //   })
-  // }
+  async function checkPeer(url){
+    if(url.startsWith('https')){
+      return await new Promise((resolve) => {
+        https.get(url, res => {
+          res.resume()
+          resolve(res.statusCode === 200)
+        })
+      })
+    } else if(url.startsWith('http')){
+      return await new Promise((resolve) => {
+        http.get(url, res => {
+          res.resume()
+          resolve(res.statusCode === 200)
+        })
+      })
+    } else {
+      return null
+    }
+  }
 
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
@@ -161,7 +192,7 @@ module.exports = function makeGunFetch (opts = {}) {
           }
         } else {
           if (headers['x-peer']) {
-            if (!headers['x-peer'].endsWith('/gun') || LIST_OF_URLS.includes(headers['x-peer'])) {
+            if (!headers['x-peer'].endsWith('/gun') || LIST_OF_URLS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
               return { statusCode: 400, headers: {}, data: [] }
             } else {
               LIST_OF_URLS.push(headers['x-peer'])
@@ -171,7 +202,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if(headers['x-peers']){
             let peersArr = null
             try {
-              peersArr = JSON.parse(headers['x-peers']).filter(data => {return data.endsWith('/gun') && !LIST_OF_URLS.includes(data)})
+              peersArr = JSON.parse(headers['x-peers']).filter(async (data) => {return data.endsWith('/gun') && !LIST_OF_URLS.includes(data) && await checkPeer(data)})
             } catch (err) {
               console.error(err)
             }
