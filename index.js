@@ -136,7 +136,7 @@ module.exports = function makeGunFetch (opts = {}) {
 function isURL(url){
   try {
     const checkUrl = new URL(url)
-    return (checkUrl.protocol === 'https' || checkUrl.protocol === 'http') && checkUrl.pathname === '/gun'
+    return (checkUrl.protocol === 'https:' || checkUrl.protocol === 'http:') && checkUrl.pathname === '/gun'
   } catch (err) {
     console.error(err)
     return null
