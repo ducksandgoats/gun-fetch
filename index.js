@@ -275,35 +275,13 @@ function isURL(url){
               })
             ])
           } else if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
-            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 2500
-            // mainData = await Promise.any([
-            //   new Promise((resolve) => {
-            //     setTimeout(() => { resolve(undefined) }, queryTimer)
-            //   }),
-            //   new Promise((resolve) => {
-            //     gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => { resolve(found) })
-            //   })
-            // ])
+            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 3500
             mainData = await new Promise((resolve) => {
               const arr = []
-              let len = arr.length
               gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                // for(const prop in found){
-                //   if(found[prop]['#']){}
-                // }
                 arr.push(found)
               })
-              const check = setInterval(() => {
-                if(len === arr.length){
-                  clearInterval(check)
-                  resolve(arr)
-                } else {
-                  len = arr.length
-                }
-              }, queryTimer)
+              setTimeout(() => {resolve(arr)}, queryTimer)
             })
           } else {
             mainData = undefined
