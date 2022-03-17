@@ -10,15 +10,10 @@ require('gun/lib/not')
 require('gun/lib/unset')
 const SEA = Gun.SEA
 
-const LIST_OF_URLS = [
-  'https://relay.peer.ooo/gun',
-  'https://gunjs.herokuapp.com/gun',
-  'https://fire-gun.herokuapp.com/gun'
-]
+const RELAYS = []
 
 const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
-  peers: LIST_OF_URLS,
   file: STORAGE_FOLDER
 }
 
@@ -189,7 +184,7 @@ function isURL(url){
           }
         } else {
           if(headers['x-node']){
-            if (!LIST_OF_URLS.includes(headers['x-node'])) {
+            if (!RELAYS.includes(headers['x-node'])) {
               return { statusCode: 400, headers: {'X-Node': headers['x-node']}, data: [] }
             } else {
               return { statusCode: 200, headers: {'X-Node': headers['x-node']}, data: [] }
@@ -198,7 +193,7 @@ function isURL(url){
             const doesNotHaveIt = []
             try {
               for(const relay of JSON.parse(headers['x-nodes'])){
-                if(!LIST_OF_URLS.includes(relay)){
+                if(!RELAYS.includes(relay)){
                   doesNotHaveIt.push(relay)
                 }
               }
@@ -211,10 +206,10 @@ function isURL(url){
               return { statusCode: 200, headers: {'X-Nodes': headers['x-nodes']}, data: [] }
             }
           } else if (headers['x-peer']) {
-            if (!isURL(headers['x-peer']) || LIST_OF_URLS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
+            if (!isURL(headers['x-peer']) || RELAYS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
               return { statusCode: 400, headers: {'X-Peer': headers['x-peer']}, data: [] }
             } else {
-              LIST_OF_URLS.push(headers['x-peer'])
+              RELAYS.push(headers['x-peer'])
               gun.opt({peers: [headers['x-peer']]})
               return { statusCode: 200, headers: {'X-Peer': headers['x-peer']}, data: [] }
             }
@@ -222,7 +217,7 @@ function isURL(url){
             const peersArr = []
             try {
               for(const relay of JSON.parse(headers['x-peers'])){
-                if(!isURL(relay) || LIST_OF_URLS.includes(relay) || !await checkPeer(relay)){
+                if(!isURL(relay) || RELAYS.includes(relay) || !await checkPeer(relay)){
                   continue
                 } else {
                   peersArr.push(relay)
@@ -234,7 +229,7 @@ function isURL(url){
             if(!peersArr.length){
               return { statusCode: 400, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             } else {
-              LIST_OF_URLS.push(...peersArr)
+              RELAYS.push(...peersArr)
               gun.opt({peers: peersArr})
               return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             }
