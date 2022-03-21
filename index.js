@@ -14,16 +14,22 @@ const RELAYS = []
 
 const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
-  file: STORAGE_FOLDER
+  file: STORAGE_FOLDER,
+  relay: false
 }
 
 module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
 
   const fileLocation = finalOpts.file
+  const startRelay = finalOpts.relay
 
   if (fileLocation && (!fs.existsSync(fileLocation))) {
     fs.mkdirSync(fileLocation)
+  }
+  if(startRelay){
+    RELAYS.push('https://gunjs.herokuapp.com/gun', 'https://fire-gun.herokuapp.com/gun')
+    finalOpts.peers = RELAYS
   }
 
   const gun = Gun(finalOpts)
