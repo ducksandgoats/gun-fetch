@@ -35,7 +35,7 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const users = {}
 
-  async function beforeRelays(){
+  function beforeRelays(){
 
     function getUrls(str, lower = false){
       const regexp = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?!&//=]*)/gi;
@@ -133,9 +133,9 @@ module.exports = function makeGunFetch (opts = {}) {
     return putRelays
   }
   
-  async function checkPeer(url){
+  function checkPeer(url){
     if(url.startsWith('https')){
-      return await new Promise((resolve) => {
+      return new Promise((resolve) => {
         let mainData = null
         const req = https.get(url)
         function handleOff(){
@@ -162,7 +162,7 @@ module.exports = function makeGunFetch (opts = {}) {
         req.on('close', handleClose)
       })
     } else if(url.startsWith('http')){
-      return await new Promise((resolve) => {
+      return new Promise((resolve) => {
         let mainData = null
         const req = http.get(url)
         function handleOff(){
