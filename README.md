@@ -29,7 +29,32 @@ gun-fetch uses special characters to make specific types of queries
 | - | hex encoded     |
 
 ### usage
-`fetch('gun://_someuser')` | if the text after `_` does not contain special characters, then this will be a user query | `gun.get(~@someuser)`\
+METHODS
+---
+HEAD:
+`someHostName` or `someHostName/somePath`, if data is found then code 200 is returned, no body is returned
+
+`_someHostName` or `_someHostName/somePath`, if data is found then code 200 is returned, no body is returned
+
+`_`, only headers are used with a request, no body is returned
+
+HEADERS:
+`Authorization`, hostname must be `_someUser` or `_someUser/somePath`, makes a query for a user that is logged in and returns with a code 200 if the data is found
+
+`X-Node`, hostname must be `_`, should contain a string which will be the url for the gundb relay, returns `X-Node` header and code 200 if gun-fetch is connected to the relay
+
+`X-Nodes`, hostname must be `_`, should contain a stringified javascript array which will contain the urls of gun relays, returns `X-Nodes` and code 200 if gun-fetch is connected to all of the relays
+
+`X-Peer`, hostname must be `_`, should contain a string which will be the url for the gundb relay, returns `X-Peer` header and code 200 if gun-fetch connects to the relay
+
+`X-Peers`, hostname must be `_`, should contain a stringified javascript array which will contain the urls of gun relays, returns `X-Peers` and code 200 if gun-fetch connects to all of the relays
+---
+
+more to come
+
+`fetch('gun://_', {method: 'HEAD', headers: {'X-Node': 'https://some-gun.relay/gun'}})` | if the method is `HEAD` and the hostname is only `_`, then  | `gun.get(~@someuser)`\
+
+`fetch('gun://_someuser')` | if the text after `_` does not contain special characters, then this will be a user/relay query | `gun.get(~@someuser)`\
 
 `fetch('gun://_some.gun-key_here')` | if the text after the `_` contains special characters, then it will be a public key query | `gun.get(~some.pub-key_here)`\
 

@@ -256,8 +256,12 @@ module.exports = function makeGunFetch (opts = {}) {
 
   if(startRelay){
     afterRelays().then(res => {
-      console.log(res)
-      gun.opt({peers: res})
+      if(res.length){
+        console.log('relays are good')
+        gun.opt({peers: res})
+      } else {
+        console.log('relays are bad')
+      }
     }).catch(err => console.error(err))
   }
 
