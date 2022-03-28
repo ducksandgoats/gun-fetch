@@ -61,26 +61,27 @@ module.exports = function makeGunFetch (opts = {}) {
     return new Promise((resolve, reject) => {
       https.get('https://raw.githubusercontent.com/wiki/amark/gun/volunteer.dht.md', res => {
         // res.resume()
-        let data = ''
+        let rejData = null
+        let resData = ''
         function handleOff(){
           res.off('error', handleError)
           res.off('data', handleData)
           res.off('close', handleClose)
         }
         function handleData(datas){
-          data += datas
+          resData += datas
         }
         function handleError(err){
           handleOff()
           console.log(err)
-          reject(null)
+          reject(rejData)
         }
         function handleClose(){
           handleOff()
-          if(res.statusCode === 200){
-            resolve(getUrls(data.toString()))
+          if(res.statusCode === 200 && resData){
+            resolve(getUrls(resData.toString()))
           } else {
-            reject(null)
+            reject(rejData)
           }
         }
         res.on('error', handleError)
@@ -127,7 +128,7 @@ module.exports = function makeGunFetch (opts = {}) {
         RELAYS.push(relay)
         putRelays.push(relay)
       }
-      await new Promise((resolve) => setTimeout(() => resolve(), 3000))
+      await new Promise((resolve) => setTimeout(() => resolve(), 2000))
     }
     return putRelays
   }
@@ -135,43 +136,57 @@ module.exports = function makeGunFetch (opts = {}) {
   async function checkPeer(url){
     if(url.startsWith('https')){
       return await new Promise((resolve) => {
+        let mainData = null
         const req = https.get(url)
         function handleOff(){
           req.off('error', handleErr)
           req.off('response', handleRes)
+          req.off('close', handleClose)
         }
         function handleErr(err){
           handleOff()
           console.error(err)
-          resolve(null)
+          resolve(mainData)
         }
         function handleRes(res){
           res.resume()
+          // handleOff()
+          mainData = res.statusCode === 200
+        }
+        function handleClose(){
           handleOff()
-          resolve(res.statusCode === 200)
+          resolve(mainData)
         }
         req.on('error', handleErr)
         req.on('response', handleRes)
+        req.on('close', handleClose)
       })
     } else if(url.startsWith('http')){
       return await new Promise((resolve) => {
+        let mainData = null
         const req = http.get(url)
         function handleOff(){
           req.off('error', handleErr)
           req.off('response', handleRes)
+          req.off('close', handleClose)
         }
         function handleErr(err){
           handleOff()
           console.error(err)
-          resolve(null)
+          resolve(mainData)
         }
         function handleRes(res){
           res.resume()
+          // handleOff()
+          mainData = res.statusCode === 200
+        }
+        function handleClose(){
           handleOff()
-          resolve(res.statusCode === 200)
+          resolve(mainData)
         }
         req.on('error', handleErr)
         req.on('response', handleRes)
+        req.on('close', handleClose)
       })
     } else {
       return null
