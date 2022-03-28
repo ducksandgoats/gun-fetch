@@ -12,11 +12,14 @@ const SEA = Gun.SEA
 
 const RELAYS = []
 
-const STORAGE_FOLDER = path.resolve('./storage')
 const DEFAULT_OPTS = {
-  file: STORAGE_FOLDER,
+  file: path.resolve('./storage'),
   relay: false
 }
+
+const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
+const encodeType = '-'
+const hostType = '_'
 
 module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
@@ -27,18 +30,163 @@ module.exports = function makeGunFetch (opts = {}) {
   if (fileLocation && (!fs.existsSync(fileLocation))) {
     fs.mkdirSync(fileLocation)
   }
-  if(startRelay){
-    RELAYS.push('https://gunjs.herokuapp.com/gun', 'https://fire-gun.herokuapp.com/gun')
-    finalOpts.peers = RELAYS
-  }
 
   const gun = Gun(finalOpts)
 
-  const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
-  // 'POST', 'PATCH'
-  const encodeType = '-'
-  const hostType = '_'
   const users = {}
+
+  async function beforeRelays(){
+
+    function getUrls(str, lower = false){
+      const regexp = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?!&//=]*)/gi;
+    
+      if (typeof str !== "string") {
+        throw new TypeError(
+          `The str argument should be a string, got ${typeof str}`
+        );
+      }
+    
+      if (str) {
+        let urls = str.match(regexp);
+        if (urls) {
+          return lower ? urls.map((item) => item.toLowerCase()) : urls;
+        } else {
+          undefined;
+        }
+      } else {
+        undefined;
+      }
+    }
+    
+    return new Promise((resolve, reject) => {
+      https.get('https://raw.githubusercontent.com/wiki/amark/gun/volunteer.dht.md', res => {
+        // res.resume()
+        let data = ''
+        function handleOff(){
+          res.off('error', handleError)
+          res.off('data', handleData)
+          res.off('close', handleClose)
+        }
+        function handleData(datas){
+          data += datas
+        }
+        function handleError(err){
+          handleOff()
+          console.log(err)
+          reject(null)
+        }
+        function handleClose(){
+          handleOff()
+          if(res.statusCode === 200){
+            resolve(getUrls(data.toString()))
+          } else {
+            reject(null)
+          }
+        }
+        res.on('error', handleError)
+        res.on('data', handleData)
+        res.on('close', handleClose)
+      })
+    })
+  }
+  
+  async function afterRelays(){
+    let relays = null
+    try {
+      relays = await beforeRelays()
+    } catch (error) {
+      console.error(error)
+      relays = [
+        'https://relay.peer.ooo/gun',
+        'https://replicant.adamantium.online/gun',
+        'http://gun-matrix.herokuapp.com/gun',
+        'https://gun-ams1.maddiex.wtf:443/gun',
+        'https://gun-sjc1.maddiex.wtf:443/gun',
+        'https://shockblox-gun-server.herokuapp.com/gun',
+        'https://mg-gun-manhattan.herokuapp.com/gun',
+        'https://gunmeetingserver.herokuapp.com/gun',
+        'https://gun-eu.herokuapp.com/gun',
+        'https://gunjs.herokuapp.com/gun',
+        'https://myriad-gundb-relay-peer.herokuapp.com/gun',
+        'https://gun-armitro.herokuapp.com/',
+        'https://fire-gun.herokuapp.com/gun',
+        'http://34.101.247.230:8765/gun',
+        'https://gun-manhattan.herokuapp.com/gun',
+        'https://us-west.xerberus.net/gun',
+        'https://dletta.rig.airfaas.com/gun',
+        'https://e2eec.herokuapp.com/gun',
+        'https://gun-us.herokuapp.com/gun',
+        'https://www.raygun.live/gun'
+      ]
+    }
+    let putRelays = []
+    for(let relay of relays){
+      if(putRelays.includes(relay) || !isURL(relay) || !await checkPeer(relay) || RELAYS.includes(relay)){
+        continue
+      } else {
+        RELAYS.push(relay)
+        putRelays.push(relay)
+      }
+      await new Promise((resolve) => setTimeout(() => resolve(), 3000))
+    }
+    return putRelays
+  }
+  
+  async function checkPeer(url){
+    if(url.startsWith('https')){
+      return await new Promise((resolve) => {
+        const req = https.get(url)
+        function handleOff(){
+          req.off('error', handleErr)
+          req.off('response', handleRes)
+        }
+        function handleErr(err){
+          handleOff()
+          console.error(err)
+          resolve(null)
+        }
+        function handleRes(res){
+          res.resume()
+          handleOff()
+          resolve(res.statusCode === 200)
+        }
+        req.on('error', handleErr)
+        req.on('response', handleRes)
+      })
+    } else if(url.startsWith('http')){
+      return await new Promise((resolve) => {
+        const req = http.get(url)
+        function handleOff(){
+          req.off('error', handleErr)
+          req.off('response', handleRes)
+        }
+        function handleErr(err){
+          handleOff()
+          console.error(err)
+          resolve(null)
+        }
+        function handleRes(res){
+          res.resume()
+          handleOff()
+          resolve(res.statusCode === 200)
+        }
+        req.on('error', handleErr)
+        req.on('response', handleRes)
+      })
+    } else {
+      return null
+    }
+  }
+  
+  function isURL(url){
+    try {
+      const checkUrl = new URL(url)
+      return (checkUrl.protocol === 'https:' || checkUrl.protocol === 'http:') && checkUrl.pathname === '/gun'
+    } catch (err) {
+      console.error(err)
+      return null
+    }
+  }
 
   async function getBody (body) {
     let mainData = ''
@@ -91,58 +239,12 @@ module.exports = function makeGunFetch (opts = {}) {
     }
   }
 
-  // function checkPeer(url){
-  //   if(url.startsWith('https')){
-  //     return new Promise((resolve) => {
-  //       https.get(url, res => {
-  //         res.resume()
-  //         resolve(res.statusCode === 200)
-  //       })
-  //     })
-  //   } else if(url.startsWith('http')){
-  //     return new Promise((resolve) => {
-  //       http.get(url, res => {
-  //         res.resume()
-  //         resolve(res.statusCode === 200)
-  //       })
-  //     })
-  //   } else {
-  //     return null
-  //   }
-  //   return new Promise((resolve) => {
-  //     http.get(url, res => resolve(res.statusCode === 200))
-  //   })
-  // }
-
-  async function checkPeer(url){
-    if(url.startsWith('https')){
-      return await new Promise((resolve) => {
-        https.get(url, res => {
-          res.resume()
-          resolve(res.statusCode === 200)
-        })
-      })
-    } else if(url.startsWith('http')){
-      return await new Promise((resolve) => {
-        http.get(url, res => {
-          res.resume()
-          resolve(res.statusCode === 200)
-        })
-      })
-    } else {
-      return null
-    }
+  if(startRelay){
+    afterRelays().then(res => {
+      console.log(res)
+      gun.opt({peers: res})
+    }).catch(err => console.error(err))
   }
-
-function isURL(url){
-  try {
-    const checkUrl = new URL(url)
-    return (checkUrl.protocol === 'https:' || checkUrl.protocol === 'http:') && checkUrl.pathname === '/gun'
-  } catch (err) {
-    console.error(err)
-    return null
-  }
-}
 
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
