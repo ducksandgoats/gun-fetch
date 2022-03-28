@@ -3,21 +3,14 @@
 Fetch With GunDB
 
 ```javascript
-const fetch = require('gun-fetch')({peers: ["https://gun-manhattan.herokuapp.com/gun",
-"https://us-west.xerberus.net/gun",
-"http://gun-matrix.herokuapp.com/gun",
-"https://gun-ams1.maddiex.wtf:443/gun",
-"https://gun-sjc1.maddiex.wtf:443/gun",
-"https://dletta.rig.airfaas.com/gun",
-"https://mg-gun-manhattan.herokuapp.com/gun",
-"https://gunmeetingserver.herokuapp.com/gun",
-"https://e2eec.herokuapp.com/gun",
-"https://gun-us.herokuapp.com/gun",
-"https://gun-eu.herokuapp.com/gun",
-"https://gunjs.herokuapp.com/gun",
-"https://www.raygun.live/gun",
-"https://gun-armitro.herokuapp.com/",
-"https://fire-gun.herokuapp.com/gun"]})
+const path = require('path')
+const options = {file: path.resolve('./storage'), relay: false}
+// file: path where data will be saved
+// relay: boolean, truthy means that gun-fetch will connect to relays, falsy means that gun-fetch will not connect to any relays
+
+const gunFetch = require('gun-fetch')
+
+const fetch = gunFetch(options)
 
 let test = await fetch('gun://hello/test/testing', {method: 'GET'})
 
@@ -26,6 +19,8 @@ let testText = await test.text()
 // show the data
 console.log(testText)
 ```
+## this readme will be updated soon, there has been a lot of changes, the method `HEAD` is now supported
+
 ### special characters
 gun-fetch uses special characters to make specific types of queries
 | Character        | Type           |
