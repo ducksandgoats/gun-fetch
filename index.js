@@ -360,6 +360,8 @@ module.exports = function makeGunFetch (opts = {}) {
               gun.opt({peers: peersArr})
               return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             }
+          } else if(headers['x-connection']){
+            return RELAYS.length ? { statusCode: 200, headers: {}, data: [] } : { statusCode: 400, headers: {}, data: [] }
           } else {
             return { statusCode: 400, headers: {}, data: [] }
           }
