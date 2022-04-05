@@ -360,8 +360,10 @@ module.exports = function makeGunFetch (opts = {}) {
               gun.opt({peers: peersArr})
               return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
             }
-          } else if(headers['x-connection']){
-            return RELAYS.length ? { statusCode: 200, headers: {}, data: [] } : { statusCode: 400, headers: {}, data: [] }
+          } else if(headers['x-relay'] && JSON.parse(headers['x-relay']) === true){
+            return RELAYS.length ? { statusCode: 200, headers: {'X-Relay': JSON.stringify(RELAYS.length)}, data: [] } : { statusCode: 400, headers: {'X-Relay': JSON.stringify(RELAYS.length)}, data: [] }
+          } else if(headers['x-relay'] && JSON.parse(headers['x-relay']) === false){
+            return RELAYS.length ? { statusCode: 200, headers: {'X-Relay': 'true'}, data: [] } : { statusCode: 400, headers: {'X-Relay': 'false'}, data: [] }
           } else {
             return { statusCode: 400, headers: {}, data: [] }
           }
