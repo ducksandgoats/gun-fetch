@@ -627,7 +627,7 @@ module.exports = function makeGunFetch (opts = {}) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('method is not supported')] }
       }
     } catch (e) {
-      return { statusCode: 500, headers, data: [e.stack] }
+      return { statusCode: 500, headers: {}, data: [e.stack] }
     }
   })
 
