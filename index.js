@@ -31,7 +31,13 @@ module.exports = function makeGunFetch (opts = {}) {
     fs.mkdirSync(fileLocation)
   }
 
-  const gun = Gun(finalOpts)
+  const gun = (() => {
+    if(finalOpts.gun){
+      return finalOpts.gun
+    } else {
+      return new Gun(finalOpts)
+    }
+  })(finalOpts)
 
   const users = {}
 
