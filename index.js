@@ -14,6 +14,7 @@ const RELAYS = []
 
 const DEFAULT_OPTS = {
   file: path.resolve('./storage'),
+  relays: null,
   relay: false
 }
 
@@ -25,7 +26,7 @@ module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
 
   const fileLocation = finalOpts.file
-  const startRelay = finalOpts.relay
+  const startRelay = finalOpts.relay && !finalOpts.gun
 
   if (fileLocation && (!fs.existsSync(fileLocation))) {
     fs.mkdirSync(fileLocation)
@@ -33,6 +34,13 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const gun = (() => {
     if(finalOpts.gun){
+      if(finalOpts.relays){
+        for(const data of finalOpts.relays){
+          if(!RELAYS.includes(data)){
+            RELAYS.push(data)
+          }
+        }
+      }
       return finalOpts.gun
     } else {
       return new Gun(finalOpts)
