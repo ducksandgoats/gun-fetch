@@ -445,7 +445,7 @@ module.exports = function makeGunFetch (opts = {}) {
             delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
           }
         } else {
           if (headers['x-alias']) {
@@ -483,7 +483,7 @@ module.exports = function makeGunFetch (opts = {}) {
             delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
           }
         } else {
           let mainData = null
@@ -556,7 +556,7 @@ module.exports = function makeGunFetch (opts = {}) {
             delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
           }
         } else {
           let mainData = null
