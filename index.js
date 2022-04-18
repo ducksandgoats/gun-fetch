@@ -34,13 +34,13 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const gun = (() => {
     if(finalOpts.gun){
-      if(finalOpts.relays){
-        for(const data of finalOpts.relays){
-          if(!RELAYS.includes(data)){
-            RELAYS.push(data)
-          }
-        }
-      }
+      // if(finalOpts.relays){
+      //   for(const data of finalOpts.relays){
+      //     if(!RELAYS.includes(data)){
+      //       RELAYS.push(data)
+      //     }
+      //   }
+      // }
       return finalOpts.gun
     } else {
       return new Gun(finalOpts)
@@ -324,7 +324,13 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: {}, data: [] }
           }
         } else {
-          if(headers['x-node']){
+          if(headers['x-status']){
+            if (!RELAYS.length) {
+              return { statusCode: 400, headers: {'X-Status': 'false'}, data: [] }
+            } else {
+              return { statusCode: 200, headers: {'X-Status': 'true'}, data: [] }
+            }
+          } else if(headers['x-node']){
             if (!RELAYS.includes(headers['x-node'])) {
               return { statusCode: 400, headers: {'X-Node': headers['x-node']}, data: [] }
             } else {
