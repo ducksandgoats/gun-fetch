@@ -6,8 +6,6 @@ const crypto = require('crypto')
 const http = require('http')
 const https = require('https')
 require('gun/lib/path')
-require('gun/lib/not')
-require('gun/lib/unset')
 const SEA = Gun.SEA
 
 const RELAYS = []
@@ -48,6 +46,19 @@ module.exports = function makeGunFetch (opts = {}) {
   })(finalOpts)
 
   const users = {}
+
+  function getIndexedObjectFromArray(arr){
+    return arr.reduce((acc, item) => {
+      return {
+        ...acc,
+        [item.id]: item,
+      }
+    }, {})
+  }
+  
+  function getArrayFromIndexedObject(indexedObj){
+    return Object.values(indexedObj)
+  }
 
   function beforeRelays(){
 
@@ -252,6 +263,13 @@ module.exports = function makeGunFetch (opts = {}) {
     return mainReq
   }
 
+  function takeOutObj(obj){
+    for(const i in obj){
+      obj[i] = null
+    }
+    return obj
+  }
+
   function queryizeReq (mainReq, user) {
     if (user) {
       return mainReq.multiple ? users[mainReq.mainHost].path(mainReq.mainPath) : users[mainReq.mainHost]
@@ -312,7 +330,7 @@ module.exports = function makeGunFetch (opts = {}) {
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           mainData = await new Promise((resolve) => {
             gunQuery.once(found => {
-              // if(found['_']){
+              // if(found){
               //   delete found['_']
               // }
               resolve(found)
@@ -401,38 +419,30 @@ module.exports = function makeGunFetch (opts = {}) {
           // if the user is authenticated, then we turn the request into a query
           gunQuery = queryizeReq(main, headers.authorization)
           // if x-not or x-paginate is not sent, then we assume this is a regular query
-          if (!headers['x-not'] && !headers['x-paginate']) {
-            mainData = await new Promise((resolve) => {
-              gunQuery.once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                resolve(found)
-              })
-            })
-          } else if (headers['x-not'] && JSON.parse(headers['x-not'] === true)) {
-            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 2500
-            mainData = await Promise.any([
-              new Promise((resolve) => {
-                setTimeout(() => { resolve({ found: null, result: false }) }, queryTimer)
-              }),
-              new Promise((resolve) => {
-                gunQuery.not(found => { resolve({ found, result: true }) })
-              })
-            ])
-          } else if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
+          if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
             const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 3500
             mainData = await new Promise((resolve) => {
               const arr = []
               gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
+                if(found !== undefined){
+                  delete found['_']
+                }
                 arr.push(found)
               })
-              setTimeout(() => {resolve(arr)}, queryTimer)
+              setTimeout(() => {
+                // arr.forEach(data => {if(data !== undefined){delete data['_']}})
+                resolve(arr)
+              }, queryTimer)
             })
           } else {
-            mainData = undefined
+            mainData = await new Promise((resolve) => {
+              gunQuery.once(found => {
+                resolve(found)
+              })
+            })
           }
           if (mainData !== undefined) {
+            delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
@@ -458,42 +468,19 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           }
           gunQuery = queryizeReq(main, headers.authorization)
-          if (!headers['x-set'] || !JSON.parse(headers['x-set'])) {
-            const useBody = await getBody(body)
-            mainData = await new Promise((resolve) => {
-              gunQuery.put(useBody).once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                resolve(found)
-              })
-            })
+          const useBody = await getBody(body)
+          if(headers['x-opt']){
+            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
-            const useBody = await getBody(body)
-            mainData = await new Promise((resolve) => {
-              gunQuery.set(useBody).once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                resolve(found)
-              })
-            })
+            gunQuery = gunQuery.put(useBody)
           }
+          mainData = await new Promise((resolve) => {
+            gunQuery.once(found => {
+              resolve(found)
+            })
+          })
           if(mainData !== undefined){
-            // if(headers['x-extra'] && Array.isArray(JSON.parse(headers['x-extra']))){
-            //   for(const headerPath of JSON.parse(headers['x-extra'])){
-            //     const headerArr = headerPath.split(' ')
-            //     if(JSON.parse(headerArr[0])){
-            //       await new Promise((resolve) => {
-            //         gun.path(headerArr[1]).set(mainData).once(data => resolve(data))
-            //       })
-            //     } else {
-            //       await new Promise((resolve) => {
-            //         gun.path(headerArr[1]).put(mainData).once(data => resolve(data))
-            //       })
-            //     }
-            //   }
-            // }
+            delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
@@ -553,41 +540,20 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           }
           gunQuery = queryizeReq(main, headers.authorization)
-          if (!headers['x-unset'] || !JSON.parse(headers['x-unset'])) {
-            mainData = await new Promise((resolve) => {
-              gunQuery.put(null).once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                resolve(found)
-              })
-            })
+          const checkBody = await getBody(body)
+          const useBody = checkBody === null ? checkBody : takeOutObj(checkBody)
+          if(headers['x-opt']){
+            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
-            const useBody = await getBody(body)
-            mainData = await new Promise((resolve) => {
-              gunQuery.unset(useBody).once(found => {
-                // if(found['_']){
-                //   delete found['_']
-                // }
-                resolve(found)
-              })
-            })
+            gunQuery = gunQuery.put(useBody)
           }
+          mainData = await new Promise((resolve) => {
+            gunQuery.once(found => {
+              resolve(found)
+            })
+          })
           if(mainData !== undefined){
-            // if(headers['x-extra'] && Array.isArray(JSON.parse(headers['x-extra']))){
-            //   for(const headerPath of JSON.parse(headers['x-extra'])){
-            //     const headerArr = headerPath.split(' ')
-            //     if(JSON.parse(headerArr[0])){
-            //       await new Promise((resolve) => {
-            //         gun.path(headerArr[1]).unset(mainData).once(data => resolve(data))
-            //       })
-            //     } else {
-            //       await new Promise((resolve) => {
-            //         gun.path(headerArr[1]).put(null).once(data => resolve(data))
-            //       })
-            //     }
-            //   }
-            // }
+            delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is empty')] }
@@ -614,23 +580,6 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           } else if (headers['x-delete']) {
             if (users[headers['x-delete']]) {
-              // if (headers.authorization) {
-              //   if (!Boolean(await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub))) {
-              //     return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
-              //   } else {
-              //     users[headers['x-logout']].leave()
-              //     delete users[headers['x-logout']]
-              //     const useBody = await getBody(body)
-              //     mainData = await new Promise((resolve) => {
-              //       gun.user().delete(headers['x-delete'], useBody, ack => {
-              //         resolve(ack)
-              //       })
-              //     })
-              //     return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
-              //   }
-              // } else {
-              //   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged in')] }
-              // }
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged in')] }
             } else {
               const useBody = await getBody(body)
