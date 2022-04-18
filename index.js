@@ -36,7 +36,7 @@ module.exports = function makeGunFetch (opts = {}) {
     if(finalOpts.gun){
       // if(finalOpts.relays){
       //   for(const data of finalOpts.relays){
-      //     if(!RELAYS.includes(data)){
+      //     if(typeof(data) === 'string' && !RELAYS.includes(data)){
       //       RELAYS.push(data)
       //     }
       //   }
