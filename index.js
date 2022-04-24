@@ -520,8 +520,8 @@ module.exports = function makeGunFetch (opts = {}) {
           }
           gunQuery = queryizeReq(main, headers['x-authentication'])
           const useBody = await getBody(body)
-          if(headers['x-cert']){
-            gunQuery = gunQuery.put(useBody, null, {opt: {cert: headers['x-cert']}})
+          if(headers['x-opt']){
+            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
             gunQuery = gunQuery.put(useBody)
           }
@@ -593,8 +593,8 @@ module.exports = function makeGunFetch (opts = {}) {
           gunQuery = queryizeReq(main, headers['x-authentication'])
           const checkBody = await getBody(body)
           const useBody = checkBody === null ? checkBody : takeOutObj(checkBody)
-          if(headers['x-cert']){
-            gunQuery = gunQuery.put(useBody, null, {opt: {cert: headers['x-cert']}})
+          if(headers['x-opt']){
+            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
             gunQuery = gunQuery.put(useBody)
           }
