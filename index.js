@@ -521,6 +521,7 @@ module.exports = function makeGunFetch (opts = {}) {
           }
           gunQuery = queryizeReq(main, headers['x-authentication'])
           const useBody = await getBody(body)
+          const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
           if(headers['x-opt']){
             gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
@@ -532,7 +533,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 const useError = new Error('query was timed out')
                 useError.name = 'ErrorTimeout'
                 reject(useError)
-              }, useTimeOut)
+              }, queryTimer)
             }),
             new Promise((resolve, reject) => {
               gunQuery.once(found => {
