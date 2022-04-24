@@ -26,6 +26,7 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const fileLocation = finalOpts.file
   const startRelay = finalOpts.relay && !finalOpts.gun
+  const useTimeOut = finalOpts.timeout
 
   if (fileLocation && (!fs.existsSync(fileLocation))) {
     fs.mkdirSync(fileLocation)
@@ -525,11 +526,20 @@ module.exports = function makeGunFetch (opts = {}) {
           } else {
             gunQuery = gunQuery.put(useBody)
           }
-          mainData = await new Promise((resolve) => {
-            gunQuery.once(found => {
-              resolve(found)
+          mainData = await Promise.race([
+            new Promise((resolve, reject) => {
+              setTimeout(() => {
+                const useError = new Error('query was timed out')
+                useError.name = 'ErrorTimeout'
+                reject(useError)
+              }, useTimeOut)
+            }),
+            new Promise((resolve, reject) => {
+              gunQuery.once(found => {
+                resolve(found)
+              })
             })
-          })
+          ])
           if(mainData !== undefined){
             delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
@@ -647,7 +657,11 @@ module.exports = function makeGunFetch (opts = {}) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('method is not supported')] }
       }
     } catch (e) {
-      return { statusCode: 500, headers: {}, data: [e.stack] }
+      if(e.name === 'ErrorTimeout'){
+        return { statusCode: 408, headers: {}, data: [e.stack] }
+      } else {
+        return { statusCode: 500, headers: {}, data: [e.stack] }
+      }
     }
   })
 
