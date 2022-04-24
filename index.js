@@ -13,6 +13,7 @@ const RELAYS = []
 const DEFAULT_OPTS = {
   file: path.resolve('./storage'),
   relays: null,
+  timeout: 30000,
   relay: false
 }
 
@@ -46,6 +47,7 @@ module.exports = function makeGunFetch (opts = {}) {
   })(finalOpts)
 
   const users = {}
+  // const timeout = finalOpts.timeout
 
   function getIndexedObjectFromArray(arr){
     return arr.reduce((acc, item) => {
@@ -115,6 +117,55 @@ module.exports = function makeGunFetch (opts = {}) {
       })
     })
   }
+
+  // async function afterRelays(){
+  //   let relays = null
+  //   const relayLocation = path.join(configLocation, './relays')
+  //   try {
+  //     relays = []
+  //     if(await fs.pathExists(relayLocation)){
+  //       const readFile = await fs.readFile(relayLocation)
+  //       relays = [...relays, ...JSON.parse(readFile.toString())]
+  //     }
+  //     relays = Array.from(new Set([...relays, ...await beforeRelays()]))
+  //   } catch (error) {
+  //     console.error(error)
+  //     relays = [
+  //       'https://relay.peer.ooo/gun',
+  //       'https://replicant.adamantium.online/gun',
+  //       'http://gun-matrix.herokuapp.com/gun',
+  //       'https://gun-ams1.maddiex.wtf:443/gun',
+  //       'https://gun-sjc1.maddiex.wtf:443/gun',
+  //       'https://shockblox-gun-server.herokuapp.com/gun',
+  //       'https://mg-gun-manhattan.herokuapp.com/gun',
+  //       'https://gunmeetingserver.herokuapp.com/gun',
+  //       'https://gun-eu.herokuapp.com/gun',
+  //       'https://gunjs.herokuapp.com/gun',
+  //       'https://myriad-gundb-relay-peer.herokuapp.com/gun',
+  //       'https://gun-armitro.herokuapp.com/',
+  //       'https://fire-gun.herokuapp.com/gun',
+  //       'http://34.101.247.230:8765/gun',
+  //       'https://gun-manhattan.herokuapp.com/gun',
+  //       'https://us-west.xerberus.net/gun',
+  //       'https://dletta.rig.airfaas.com/gun',
+  //       'https://e2eec.herokuapp.com/gun',
+  //       'https://gun-us.herokuapp.com/gun',
+  //       'https://www.raygun.live/gun'
+  //     ]
+  //   }
+  //   let putRelays = []
+  //   for(let relay of relays){
+  //     if(putRelays.includes(relay) || !isURL(relay) || !await checkPeer(relay) || RELAYS.includes(relay)){
+  //       continue
+  //     } else {
+  //       RELAYS.push(relay)
+  //       putRelays.push(relay)
+  //     }
+  //     await new Promise((resolve) => setTimeout(() => resolve(), 2000))
+  //   }
+  //   await fs.writeFile(relayLocation, JSON.stringify(putRelays))
+  //   return putRelays
+  // }
   
   async function afterRelays(){
     let relays = null
@@ -320,13 +371,13 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
-          if (headers.authorization) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
+          if (headers['x-authentication']) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
-          gunQuery = queryizeReq(main, headers.authorization)
+          gunQuery = queryizeReq(main, headers['x-authentication'])
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           mainData = await new Promise((resolve) => {
             gunQuery.once(found => {
@@ -411,16 +462,16 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
-          if (headers.authorization) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
+          if (headers['x-authentication']) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
-          gunQuery = queryizeReq(main, headers.authorization)
+          gunQuery = queryizeReq(main, headers['x-authentication'])
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
-            const queryTimer = headers['x-timer'] && !Number.isNaN(Number(headers['x-timer'])) ? JSON.parse(headers['x-timer']) * 1000 : 3500
+            const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : 5000
             mainData = await new Promise((resolve) => {
               const arr = []
               gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
@@ -462,15 +513,15 @@ module.exports = function makeGunFetch (opts = {}) {
         if (main.mainQuery) {
           let gunQuery = null
           let mainData = null
-          if (headers.authorization) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
+          if (headers['x-authentication']) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
-          gunQuery = queryizeReq(main, headers.authorization)
+          gunQuery = queryizeReq(main, headers['x-authentication'])
           const useBody = await getBody(body)
-          if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
+          if(headers['x-cert']){
+            gunQuery = gunQuery.put(useBody, null, {opt: {cert: headers['x-cert']}})
           } else {
             gunQuery = gunQuery.put(useBody)
           }
@@ -505,7 +556,7 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             if (users[headers['x-login']]) {
               if (users[headers['x-login']].check.hash === await SEA.work(headers['x-login'], useBody)) {
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(users[headers['x-login']].check.token)] }
+                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}))] }
               } else {
                 return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('password is incorrect')] }
               }
@@ -525,7 +576,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
                 users[headers['x-login']].check.pub = mainData.sea.pub
                 users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, address: users[headers['x-login']].check.pub}))] }
+                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}))] }
               }
             }
           }
@@ -534,16 +585,16 @@ module.exports = function makeGunFetch (opts = {}) {
         if (main.mainQuery) {
           let gunQuery = null
           let mainData = null
-          if (headers.authorization) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers.authorization, users[main.mainHost].check.pub))) {
+          if (headers['x-authentication']) {
+            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
-          gunQuery = queryizeReq(main, headers.authorization)
+          gunQuery = queryizeReq(main, headers['x-authentication'])
           const checkBody = await getBody(body)
           const useBody = checkBody === null ? checkBody : takeOutObj(checkBody)
-          if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
+          if(headers['x-cert']){
+            gunQuery = gunQuery.put(useBody, null, {opt: {cert: headers['x-cert']}})
           } else {
             gunQuery = gunQuery.put(useBody)
           }
@@ -564,8 +615,8 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
             if (users[headers['x-logout']]) {
-              if (headers.authorization) {
-                if (!Boolean(await SEA.verify(headers.authorization, users[headers['x-logout']].check.pub))) {
+              if (headers['x-authentication']) {
+                if (!Boolean(await SEA.verify(headers['x-authentication'], users[headers['x-logout']].check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
                 } else {
                   users[headers['x-logout']].leave()
