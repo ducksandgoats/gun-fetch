@@ -205,7 +205,7 @@ module.exports = function makeGunFetch (opts = {}) {
         RELAYS.push(relay)
         putRelays.push(relay)
       }
-      await new Promise((resolve) => setTimeout(() => resolve(), 2000))
+      await new Promise((resolve) => setTimeout(() => resolve(), 1000))
     }
     return putRelays
   }
