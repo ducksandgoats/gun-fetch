@@ -489,11 +489,21 @@ module.exports = function makeGunFetch (opts = {}) {
               }, queryTimer)
             })
           } else {
-            mainData = await new Promise((resolve) => {
-              gunQuery.once(found => {
-                resolve(found)
+            const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
+            mainData = await Promise.race([
+              new Promise((resolve, reject) => {
+                setTimeout(() => {
+                  const useError = new Error('query was timed out')
+                  useError.name = 'ErrorTimeout'
+                  reject(useError)
+                }, queryTimer)
+              }),
+              new Promise((resolve, reject) => {
+                gunQuery.once(found => {
+                  resolve(found)
+                })
               })
-            })
+            ])
           }
           if (mainData !== undefined) {
             delete mainData['_']
@@ -607,15 +617,25 @@ module.exports = function makeGunFetch (opts = {}) {
           const checkBody = await getBody(body)
           const useBody = checkBody === null ? checkBody : takeOutObj(checkBody)
           if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
+            gunQuery = gunQuery.put(useBody, cb => console.log(cb.err || cb.ok), JSON.parse(headers['x-opt']))
           } else {
-            gunQuery = gunQuery.put(useBody)
+            gunQuery = gunQuery.put(useBody, cb => console.log(cb.err || cb.ok))
           }
-          mainData = await new Promise((resolve) => {
-            gunQuery.once(found => {
-              resolve(found)
+          const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
+          mainData = await Promise.race([
+            new Promise((resolve, reject) => {
+              setTimeout(() => {
+                const useError = new Error('query was timed out')
+                useError.name = 'ErrorTimeout'
+                reject(useError)
+              }, queryTimer)
+            }),
+            new Promise((resolve, reject) => {
+              gunQuery.once(found => {
+                resolve(found)
+              })
             })
-          })
+          ])
           if(mainData !== undefined){
             delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
