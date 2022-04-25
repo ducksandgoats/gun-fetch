@@ -485,6 +485,7 @@ module.exports = function makeGunFetch (opts = {}) {
               })
               setTimeout(() => {
                 // arr.forEach(data => {if(data !== undefined){delete data['_']}})
+                arr.shift()
                 resolve(arr)
               }, queryTimer)
             })
