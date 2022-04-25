@@ -535,9 +535,9 @@ module.exports = function makeGunFetch (opts = {}) {
           const useBody = await getBody(body)
           const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
           if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)}, JSON.parse(headers['x-opt']))
+            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
           } else {
-            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)})
+            gunQuery = gunQuery.put(useBody, null)
           }
           mainData = await Promise.race([
             new Promise((resolve, reject) => {
