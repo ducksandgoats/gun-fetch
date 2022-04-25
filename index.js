@@ -13,7 +13,7 @@ const RELAYS = []
 const DEFAULT_OPTS = {
   file: path.resolve('./storage'),
   relays: null,
-  timeout: 30000,
+  timeout: 15000,
   relay: false
 }
 
@@ -101,7 +101,7 @@ module.exports = function makeGunFetch (opts = {}) {
         }
         function handleError(err){
           handleOff()
-          console.log(err)
+          console.error(err)
           reject(rejData)
         }
         function handleClose(){
