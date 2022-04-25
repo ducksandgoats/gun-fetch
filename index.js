@@ -471,15 +471,17 @@ module.exports = function makeGunFetch (opts = {}) {
           // if the user is authenticated, then we turn the request into a query
           gunQuery = queryizeReq(main, headers['x-authentication'])
           // if x-not or x-paginate is not sent, then we assume this is a regular query
-          if (headers['x-paginate'] && typeof (JSON.parse(headers['x-paginate'])) === 'object') {
+          if (headers['x-paginate']) {
             const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : 5000
             mainData = await new Promise((resolve) => {
               const arr = []
               gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
                 if(found !== undefined){
                   delete found['_']
+                  arr.push(found)
+                } else {
+                  console.log('data in pagination was empty')
                 }
-                arr.push(found)
               })
               setTimeout(() => {
                 // arr.forEach(data => {if(data !== undefined){delete data['_']}})
@@ -523,9 +525,9 @@ module.exports = function makeGunFetch (opts = {}) {
           const useBody = await getBody(body)
           const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
           if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, null, JSON.parse(headers['x-opt']))
+            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)}, JSON.parse(headers['x-opt']))
           } else {
-            gunQuery = gunQuery.put(useBody)
+            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)})
           }
           mainData = await Promise.race([
             new Promise((resolve, reject) => {
