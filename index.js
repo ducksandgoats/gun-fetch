@@ -351,15 +351,12 @@ module.exports = function makeGunFetch (opts = {}) {
 
   const fetch = makeFetch(async request => {
     const { url, method, headers, body } = request
+    const mainReq = headers.accept && headers.accept.includes('text/html')
+    const mainRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
 
     try {
       const { hostname, pathname, protocol } = new URL(url)
-      let mainHostname = null
-      if (hostname && hostname[0] === encodeType) {
-        mainHostname = Buffer.from(hostname.slice(1), 'hex').toString('utf-8')
-      } else {
-        mainHostname = hostname
-      }
+      const mainHostname = hostname && hostname[0] === encodeType ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
 
       if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || mainHostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('query is incorrect')] }
@@ -465,7 +462,7 @@ module.exports = function makeGunFetch (opts = {}) {
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers['x-authentication']) {
             if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
@@ -508,19 +505,19 @@ module.exports = function makeGunFetch (opts = {}) {
           }
           if (mainData !== undefined) {
             delete mainData['_']
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
         } else {
           if (headers['x-alias']) {
             if (users[headers['x-alias']]) {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(`you are logged in as${headers['x-alias']}`)] }
+              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are logged in as ${headers['x-alias']}`)] }
             } else {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(`you are not logged in as ${headers['x-alias']}`)] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are not logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)] }
             }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-alias" header was not used')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"x-alias" header was not used</p></div></body></html>`] : [JSON.stringify('"x-alias" header was not used')] }
           }
         }
       } else if (method === 'PUT') {
@@ -529,7 +526,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           if (headers['x-authentication']) {
             if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
           gunQuery = queryizeReq(main, headers['x-authentication'])
@@ -556,14 +553,14 @@ module.exports = function makeGunFetch (opts = {}) {
           ])
           if(mainData !== undefined){
             delete mainData['_']
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
         } else {
           let mainData = null
           if (!headers['x-create'] && !headers['x-login']) {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-create" or "x-login" header is needed with the alias')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Create" or "X-Login" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-create" or "x-login" header is needed with the alias')] }
           } else if (headers['x-create']) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
@@ -572,17 +569,17 @@ module.exports = function makeGunFetch (opts = {}) {
               }, { already: false })
             })
             if (mainData.err) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
             } else {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
             }
           } else if (headers['x-login']) {
             const useBody = await getBody(body)
             if (users[headers['x-login']]) {
               if (users[headers['x-login']].check.hash === await SEA.work(headers['x-login'], useBody)) {
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}))] }
+                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}}</p></div></body></html>`] : [JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub})] }
               } else {
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('password is incorrect')] }
+                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>password is incorrect</p></div></body></html>`] : [JSON.stringify('password is incorrect')] }
               }
             } else {
               users[headers['x-login']] = gun.user()
@@ -594,13 +591,13 @@ module.exports = function makeGunFetch (opts = {}) {
               if (mainData.err) {
                 users[headers['x-login']].leave()
                 delete users[headers['x-login']]
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
               } else {
                 users[headers['x-login']].check = {}
                 users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
                 users[headers['x-login']].check.pub = mainData.sea.pub
                 users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}))] }
+                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}}</p></div></body></html>`] : [JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub})] }
               }
             }
           }
@@ -611,7 +608,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           if (headers['x-authentication']) {
             if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
           gunQuery = queryizeReq(main, headers['x-authentication'])
@@ -639,33 +636,33 @@ module.exports = function makeGunFetch (opts = {}) {
           ])
           if(mainData !== undefined){
             delete mainData['_']
-            return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('Data is undefined, it is empty')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
         } else {
           let mainData = null
           if (!headers['x-delete'] && !headers['x-logout']) {
-            return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('"x-delete" or "x-logout" header is needed with the alias')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Delete" or "X-Logout" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
             if (users[headers['x-logout']]) {
               if (headers['x-authentication']) {
                 if (!Boolean(await SEA.verify(headers['x-authentication'], users[headers['x-logout']].check.pub))) {
-                  return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
+                  return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   users[headers['x-logout']].leave()
                   delete users[headers['x-logout']]
-                  return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify({ message: 'User has been logged out' }))] }
+                  return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user has been logged out</p></div></body></html>`] : [JSON.stringify('user has been logged out')] }
                 }
               } else {
-                return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('the header x-authorization is required')] }
+                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Authentication" header is needed</p></div></body></html>`] : [JSON.stringify('the header x-authorization is required')] }
               }
             } else {
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged out')] }
+              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged out</p></div></body></html>`] : [JSON.stringify('user is currently logged out')] }
             }
           } else if (headers['x-delete']) {
             if (users[headers['x-delete']]) {
-              return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('user is currently logged in')] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged in</p></div></body></html>`] : [JSON.stringify('user is currently logged in')] }
             } else {
               const useBody = await getBody(body)
               mainData = await new Promise((resolve) => {
@@ -673,12 +670,12 @@ module.exports = function makeGunFetch (opts = {}) {
                   resolve(ack)
                 })
               })
-              return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from(JSON.stringify(mainData))] }
+              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
             }
           }
         }
       } else {
-        return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('method is not supported')] }
+        return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>method is not supported</p></div></body></html>`] : [JSON.stringify('method is not supported')] }
       }
     } catch (e) {
       if(e.name === 'ErrorTimeout'){
