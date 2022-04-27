@@ -472,12 +472,13 @@ module.exports = function makeGunFetch (opts = {}) {
             const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : 5000
             mainData = await new Promise((resolve) => {
               const arr = []
-              gunQuery.get(JSON.parse(headers['x-paginate'])).once().map().once(found => {
+              gunQuery.get(JSON.parse(headers['x-paginate'])).once((data) => {console.log(typeof(data))}).map().once((found) => {
                 if(found !== undefined){
-                  delete found['_']
+                  // delete found['_']
                   arr.push(found)
                 } else {
-                  console.log('data in pagination was empty')
+                  // might as well log something
+                  console.log('data is ', found)
                 }
               })
               setTimeout(() => {
@@ -655,7 +656,7 @@ module.exports = function makeGunFetch (opts = {}) {
                   return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user has been logged out</p></div></body></html>`] : [JSON.stringify('user has been logged out')] }
                 }
               } else {
-                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Authentication" header is needed</p></div></body></html>`] : [JSON.stringify('the header x-authorization is required')] }
+                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Authentication" header is needed</p></div></body></html>`] : [JSON.stringify('"X-Authentication" header is needed')] }
               }
             } else {
               return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged out</p></div></body></html>`] : [JSON.stringify('user is currently logged out')] }
