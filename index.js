@@ -32,7 +32,7 @@ module.exports = function makeGunFetch (opts = {}) {
     fs.mkdirSync(fileLocation)
   }
 
-  const gun = (() => {
+  const gun = ((finalOpts) => {
     if(finalOpts.gun){
       // if(finalOpts.relays){
       //   for(const data of finalOpts.relays){
@@ -169,6 +169,10 @@ module.exports = function makeGunFetch (opts = {}) {
   // }
   
   async function afterRelays(){
+    const check = Object.keys(gun.back('opt.peers'))
+    if(check.length > 4){
+      throw new Error('there are already enough relays')
+    }
     let relays = null
     try {
       relays = await beforeRelays()
@@ -197,17 +201,21 @@ module.exports = function makeGunFetch (opts = {}) {
         'https://www.raygun.live/gun'
       ]
     }
-    let putRelays = []
+    relays.sort(() => Math.random() - 0.5)
     for(let relay of relays){
-      if(putRelays.includes(relay) || !isURL(relay) || !await checkPeer(relay) || RELAYS.includes(relay)){
-        continue
+      if(check.length < 5){
+        if(!isURL(relay) || check.includes(relay) || !await checkPeer(relay)){
+          continue
+        } else {
+          check.push(relay)
+        }
+        await new Promise((resolve) => setTimeout(() => resolve(), 1000))
       } else {
-        RELAYS.push(relay)
-        putRelays.push(relay)
+        break
       }
-      await new Promise((resolve) => setTimeout(() => resolve(), 1000))
     }
-    return putRelays
+    relays = null
+    return check
   }
   
   function checkPeer(url){
@@ -339,10 +347,10 @@ module.exports = function makeGunFetch (opts = {}) {
   }
 
   if(startRelay){
-    afterRelays().then(res => {
-      if(res.length){
+    afterRelays().then(data => {
+      if(data.length){
         console.log('relays are good')
-        gun.opt({peers: res})
+        gun.opt({peers: data})
       } else {
         console.log('relays are bad')
       }
@@ -391,66 +399,32 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: {}, data: [] }
           }
         } else {
-          if(headers['x-status']){
-            if (!RELAYS.length) {
-              return { statusCode: 400, headers: {'X-Status': 'false'}, data: [] }
+          if(headers['x-relay']){
+            if (Object.keys(gun.back('opt.peers')).length) {
+              return { statusCode: 200, headers: {'X-Relay': 'true'}, data: [] }
             } else {
-              return { statusCode: 200, headers: {'X-Status': 'true'}, data: [] }
+              return { statusCode: 400, headers: {'X-Relay': 'false'}, data: [] }
             }
           } else if(headers['x-node']){
-            if (!RELAYS.includes(headers['x-node'])) {
-              return { statusCode: 400, headers: {'X-Node': headers['x-node']}, data: [] }
-            } else {
+            if (Object.keys(gun.back('opt.peers')).includes(headers['x-node'])) {
               return { statusCode: 200, headers: {'X-Node': headers['x-node']}, data: [] }
-            }
-          } else if(headers['x-nodes']){
-            const doesNotHaveIt = []
-            try {
-              for(const relay of JSON.parse(headers['x-nodes'])){
-                if(!RELAYS.includes(relay)){
-                  doesNotHaveIt.push(relay)
-                }
-              }
-            } catch (err) {
-              console.error(err)
-            }
-            if (doesNotHaveIt.length) {
-              return { statusCode: 400, headers: {'X-Nodes': JSON.stringify(doesNotHaveIt)}, data: [] }
             } else {
-              return { statusCode: 200, headers: {'X-Nodes': headers['x-nodes']}, data: [] }
+              return { statusCode: 400, headers: {'X-Node': headers['x-node']}, data: [] }
             }
           } else if (headers['x-peer']) {
-            if (!isURL(headers['x-peer']) || RELAYS.includes(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
+            if (!isURL(headers['x-peer']) || !await checkPeer(headers['x-peer'])) {
               return { statusCode: 400, headers: {'X-Peer': headers['x-peer']}, data: [] }
             } else {
-              RELAYS.push(headers['x-peer'])
-              gun.opt({peers: [headers['x-peer']]})
+              const mesh = gun.back('opt.mesh')
+              const relays = Object.keys(gun.back('opt.peers'))
+              while(relays.length > 4){
+                // relays.splice(Math.floor(Math.random() * relays.length), 1)
+                mesh.bye(relays.pop())
+              }
+              relays.push(headers['x-peer'])
+              gun.opt({peers: relays})
               return { statusCode: 200, headers: {'X-Peer': headers['x-peer']}, data: [] }
             }
-          } else if(headers['x-peers']){
-            const peersArr = []
-            try {
-              for(const relay of JSON.parse(headers['x-peers'])){
-                if(!isURL(relay) || RELAYS.includes(relay) || !await checkPeer(relay)){
-                  continue
-                } else {
-                  peersArr.push(relay)
-                }
-              }
-            } catch (err) {
-              console.error(err)
-            }
-            if(!peersArr.length){
-              return { statusCode: 400, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
-            } else {
-              RELAYS.push(...peersArr)
-              gun.opt({peers: peersArr})
-              return { statusCode: 200, headers: {'X-Peers': JSON.stringify(peersArr)}, data: [] }
-            }
-          } else if(headers['x-relay'] && JSON.parse(headers['x-relay']) === true){
-            return RELAYS.length ? { statusCode: 200, headers: {'X-Relay': JSON.stringify(RELAYS.length)}, data: [] } : { statusCode: 400, headers: {'X-Relay': JSON.stringify(RELAYS.length)}, data: [] }
-          } else if(headers['x-relay'] && JSON.parse(headers['x-relay']) === false){
-            return RELAYS.length ? { statusCode: 200, headers: {'X-Relay': 'true'}, data: [] } : { statusCode: 400, headers: {'X-Relay': 'false'}, data: [] }
           } else {
             return { statusCode: 400, headers: {}, data: [] }
           }
