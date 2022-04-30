@@ -47,21 +47,21 @@ module.exports = function makeGunFetch (opts = {}) {
     }
   })(finalOpts)
 
-  const users = {}
+  const user = gun.user()
   // const timeout = finalOpts.timeout
 
-  function getIndexedObjectFromArray(arr){
-    return arr.reduce((acc, item) => {
-      return {
-        ...acc,
-        [item.id]: item,
-      }
-    }, {})
-  }
+  // function getIndexedObjectFromArray(arr){
+  //   return arr.reduce((acc, item) => {
+  //     return {
+  //       ...acc,
+  //       [item.id]: item,
+  //     }
+  //   }, {})
+  // }
   
-  function getArrayFromIndexedObject(indexedObj){
-    return Object.values(indexedObj)
-  }
+  // function getArrayFromIndexedObject(indexedObj){
+  //   return Object.values(indexedObj)
+  // }
 
   function beforeRelays(){
 
@@ -170,7 +170,7 @@ module.exports = function makeGunFetch (opts = {}) {
   
   async function afterRelays(){
     const check = Object.keys(gun.back('opt.peers'))
-    if(check.length > 4){
+    if(check.length > 2){
       throw new Error('there are already enough relays')
     }
     let relays = null
@@ -203,15 +203,15 @@ module.exports = function makeGunFetch (opts = {}) {
     }
     relays.sort(() => Math.random() - 0.5)
     for(let relay of relays){
-      if(check.length < 5){
+      if(check.length > 2){
+        break
+      } else {
         if(!isURL(relay) || check.includes(relay) || !await checkPeer(relay)){
           continue
         } else {
           check.push(relay)
         }
         await new Promise((resolve) => setTimeout(() => resolve(), 1000))
-      } else {
-        break
       }
     }
     relays = null
@@ -330,9 +330,9 @@ module.exports = function makeGunFetch (opts = {}) {
     return obj
   }
 
-  function queryizeReq (mainReq, user) {
-    if (user) {
-      return mainReq.multiple ? users[mainReq.mainHost].path(mainReq.mainPath) : users[mainReq.mainHost]
+  function queryizeReq (mainReq, auth) {
+    if (auth) {
+      return mainReq.multiple ? user.path(mainReq.mainPath) : user
     } else {
       if (mainReq.queryType) {
         if (mainReq.mainHost.includes('.') || mainReq.mainHost.includes('-') || mainReq.mainHost.includes('_')) {
@@ -378,7 +378,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers['x-authentication']) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
+            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
@@ -417,7 +417,8 @@ module.exports = function makeGunFetch (opts = {}) {
             } else {
               const mesh = gun.back('opt.mesh')
               const relays = Object.keys(gun.back('opt.peers'))
-              while(relays.length > 4){
+              relays.sort(() => Math.random() - 0.5)
+              while(relays.length > 2){
                 // relays.splice(Math.floor(Math.random() * relays.length), 1)
                 mesh.bye(relays.pop())
               }
@@ -435,7 +436,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers['x-authentication']) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
+            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -485,14 +486,10 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
         } else {
-          if (headers['x-alias']) {
-            if (users[headers['x-alias']]) {
-              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are logged in as ${headers['x-alias']}`)] }
-            } else {
-              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are not logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)] }
-            }
+          if (user) {
+            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are logged in as ${headers['x-alias']}`)] }
           } else {
-            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"x-alias" header was not used</p></div></body></html>`] : [JSON.stringify('"x-alias" header was not used')] }
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are not logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)] }
           }
         }
       } else if (method === 'PUT') {
@@ -500,7 +497,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers['x-authentication']) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
+            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -534,12 +531,10 @@ module.exports = function makeGunFetch (opts = {}) {
           }
         } else {
           let mainData = null
-          if (!headers['x-create'] && !headers['x-login']) {
-            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Create" or "X-Login" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-create" or "x-login" header is needed with the alias')] }
-          } else if (headers['x-create']) {
+          if (headers['x-create']) {
             const useBody = await getBody(body)
             mainData = await new Promise((resolve) => {
-              gun.user().create(headers['x-create'], useBody, ack => {
+              user.create(headers['x-create'], useBody, ack => {
                 resolve(ack)
               }, { already: false })
             })
@@ -550,31 +545,31 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           } else if (headers['x-login']) {
             const useBody = await getBody(body)
-            if (users[headers['x-login']]) {
-              if (users[headers['x-login']].check.hash === await SEA.work(headers['x-login'], useBody)) {
-                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}}</p></div></body></html>`] : [JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub})] }
+            if (user) {
+              if (user.check.hash === await SEA.work(headers['x-login'], useBody)) {
+                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               } else {
                 return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>password is incorrect</p></div></body></html>`] : [JSON.stringify('password is incorrect')] }
               }
             } else {
-              users[headers['x-login']] = gun.user()
               mainData = await new Promise((resolve) => {
-                users[headers['x-login']].auth(headers['x-login'], useBody, ack => {
+                user.auth(headers['x-login'], useBody, ack => {
                   resolve(ack)
                 })
               })
               if (mainData.err) {
-                users[headers['x-login']].leave()
-                delete users[headers['x-login']]
+                user.leave()
                 return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
               } else {
-                users[headers['x-login']].check = {}
-                users[headers['x-login']].check.hash = await SEA.work(headers['x-login'], useBody)
-                users[headers['x-login']].check.pub = mainData.sea.pub
-                users[headers['x-login']].check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub}}</p></div></body></html>`] : [JSON.stringify({token: users[headers['x-login']].check.token, pub: users[headers['x-login']].check.pub})] }
+                user.check = {}
+                user.check.hash = await SEA.work(headers['x-login'], useBody)
+                user.check.pub = mainData.sea.pub
+                user.check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
+                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               }
             }
+          } else {
+            return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Create" or "X-Login" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-create" or "x-login" header is needed with the alias')] }
           }
         }
       } else if (method === 'DELETE') {
@@ -582,7 +577,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers['x-authentication']) {
-            if (!users[main.mainHost] || !Boolean(await SEA.verify(headers['x-authentication'], users[main.mainHost].check.pub))) {
+            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -620,28 +615,42 @@ module.exports = function makeGunFetch (opts = {}) {
           if (!headers['x-delete'] && !headers['x-logout']) {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Delete" or "X-Logout" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
-            if (users[headers['x-logout']]) {
+            if (user) {
               if (headers['x-authentication']) {
-                if (!Boolean(await SEA.verify(headers['x-authentication'], users[headers['x-logout']].check.pub))) {
+                if (!Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
-                  users[headers['x-logout']].leave()
-                  delete users[headers['x-logout']]
+                  user.leave()
                   return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user has been logged out</p></div></body></html>`] : [JSON.stringify('user has been logged out')] }
                 }
               } else {
                 return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Authentication" header is needed</p></div></body></html>`] : [JSON.stringify('"X-Authentication" header is needed')] }
               }
             } else {
-              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged out</p></div></body></html>`] : [JSON.stringify('user is currently logged out')] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged out</p></div></body></html>`] : [JSON.stringify('user is currently logged out')] }
             }
           } else if (headers['x-delete']) {
-            if (users[headers['x-delete']]) {
-              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged in</p></div></body></html>`] : [JSON.stringify('user is currently logged in')] }
+            const useBody = await getBody(body)
+            if (user) {
+              if(user.check.hash === await SEA.work(headers['x-login'], useBody)){
+                  user.leave()
+                  mainData = await new Promise((resolve) => {
+                    user.delete(headers['x-delete'], useBody, ack => {
+                      resolve(ack)
+                    })
+                  })
+                  return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+              } else {
+                mainData = await new Promise((resolve) => {
+                  user.delete(headers['x-delete'], useBody, ack => {
+                    resolve(ack)
+                  })
+                })
+                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+              }
             } else {
-              const useBody = await getBody(body)
               mainData = await new Promise((resolve) => {
-                gun.user().delete(headers['x-delete'], useBody, ack => {
+                user.delete(headers['x-delete'], useBody, ack => {
                   resolve(ack)
                 })
               })

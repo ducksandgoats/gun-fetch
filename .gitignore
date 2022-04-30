@@ -19,6 +19,9 @@ radata/
 # app file
 app.js
 
+# extends
+extends/
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
