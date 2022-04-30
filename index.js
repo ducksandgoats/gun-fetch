@@ -25,27 +25,14 @@ module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
 
   const fileLocation = finalOpts.file
-  const startRelay = finalOpts.relay && !finalOpts.gun
+  const startRelay = finalOpts.relay
   const useTimeOut = finalOpts.timeout
 
   if (fileLocation && (!fs.existsSync(fileLocation))) {
     fs.mkdirSync(fileLocation)
   }
 
-  const gun = ((finalOpts) => {
-    if(finalOpts.gun){
-      // if(finalOpts.relays){
-      //   for(const data of finalOpts.relays){
-      //     if(typeof(data) === 'string' && !RELAYS.includes(data)){
-      //       RELAYS.push(data)
-      //     }
-      //   }
-      // }
-      return finalOpts.gun
-    } else {
-      return new Gun(finalOpts)
-    }
-  })(finalOpts)
+  const gun = finalOpts.gun
 
   const user = gun.user()
   // const timeout = finalOpts.timeout
