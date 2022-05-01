@@ -1,3 +1,4 @@
+const Gun = require('gun')
 const makeFetch = require('make-fetch')
 const path = require('path')
 const fs = require('fs')
@@ -6,8 +7,6 @@ const http = require('http')
 const https = require('https')
 require('gun/lib/path')
 const SEA = Gun.SEA
-
-const RELAYS = []
 
 const DEFAULT_OPTS = {
   file: path.resolve('./storage'),
@@ -31,7 +30,13 @@ module.exports = function makeGunFetch (opts = {}) {
     fs.mkdirSync(fileLocation)
   }
 
-  const gun = finalOpts.gun
+  const gun = ((finalOpts) => {
+    if(finalOpts.gun){
+      return finalOpts.gun
+    } else {
+      return Gun(finalOpts)
+    }
+  })(finalOpts)
 
   const user = gun.user()
   // const timeout = finalOpts.timeout

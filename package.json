@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "fs-extra": "^10.1.0",
+    "gun": "github:amark/gun",
     "make-fetch": "^2.3.1"
   }
 }
