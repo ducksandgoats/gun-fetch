@@ -477,7 +477,7 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
         } else {
-          if (user) {
+          if (user.is) {
             return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are logged in as ${headers['x-alias']}`)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>you are not logged in as ${headers['x-alias']}</p></div></body></html>`] : [JSON.stringify(`you are not logged in as ${headers['x-alias']}`)] }
@@ -536,7 +536,7 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           } else if (headers['x-login']) {
             const useBody = await getBody(body)
-            if (user) {
+            if (user.is) {
               if (user.check.hash === await SEA.work(headers['x-login'], useBody)) {
                 return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               } else {
@@ -606,7 +606,7 @@ module.exports = function makeGunFetch (opts = {}) {
           if (!headers['x-delete'] && !headers['x-logout']) {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Delete" or "X-Logout" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
-            if (user) {
+            if (user.is) {
               if (headers['x-authentication']) {
                 if (!Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
@@ -622,30 +622,28 @@ module.exports = function makeGunFetch (opts = {}) {
             }
           } else if (headers['x-delete']) {
             const useBody = await getBody(body)
-            if (user) {
-              if(user.check.hash === await SEA.work(headers['x-login'], useBody)){
-                  user.leave()
-                  mainData = await new Promise((resolve) => {
-                    user.delete(headers['x-delete'], useBody, ack => {
-                      resolve(ack)
+            if (user.is) {
+              if (headers['x-authentication']) {
+                if (!Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+                  return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
+                } else {
+                  if(user.check.hash === await SEA.work(headers['x-login'], useBody)){
+                    user.leave()
+                    mainData = await new Promise((resolve) => {
+                      user.delete(headers['x-delete'], useBody, ack => {
+                        resolve(ack)
+                      })
                     })
-                  })
-                  return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+                    return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+                  } else {
+                    return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>not authorized</p></div></body></html>`] : [JSON.stringify('not authorized')] }
+                  }
+                }
               } else {
-                mainData = await new Promise((resolve) => {
-                  user.delete(headers['x-delete'], useBody, ack => {
-                    resolve(ack)
-                  })
-                })
-                return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+                return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Authentication" header is needed</p></div></body></html>`] : [JSON.stringify('"X-Authentication" header is needed')] }
               }
             } else {
-              mainData = await new Promise((resolve) => {
-                user.delete(headers['x-delete'], useBody, ack => {
-                  resolve(ack)
-                })
-              })
-              return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+              return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user is currently logged out</p></div></body></html>`] : [JSON.stringify('user is currently logged out')] }
             }
           }
         }
