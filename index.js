@@ -556,6 +556,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 user.check.hash = await SEA.work(headers['x-login'], useBody)
                 user.check.pub = mainData.sea.pub
                 user.check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
+                user,check.alias = headers['x-login']
                 return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               }
             }
@@ -608,7 +609,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-logout']) {
             if (user.is) {
               if (headers['x-authentication']) {
-                if (!Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+                if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   user.leave()
@@ -624,7 +625,7 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             if (user.is) {
               if (headers['x-authentication']) {
-                if (!Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+                if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   if(user.check.hash === await SEA.work(headers['x-login'], useBody)){
