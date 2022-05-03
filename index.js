@@ -439,13 +439,13 @@ module.exports = function makeGunFetch (opts = {}) {
             mainData = await new Promise((resolve) => {
               const arr = []
               gunQuery.get(JSON.parse(headers['x-paginate'])).once((data) => {console.log(typeof(data))}).map().once((found) => {
-                if(found !== undefined){
-                  // delete found['_']
+                // if(found !== undefined){
+                //   // delete found['_']
                   arr.push(found)
-                } else {
-                  // might as well log something
-                  console.log('data is ', found)
-                }
+                // } else {
+                //   // might as well log something
+                //   console.log('data is ', found)
+                // }
               })
               setTimeout(() => {
                 // arr.forEach(data => {if(data !== undefined){delete data['_']}})
@@ -471,7 +471,7 @@ module.exports = function makeGunFetch (opts = {}) {
             ])
           }
           if (mainData !== undefined) {
-            delete mainData['_']
+            // delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
@@ -515,7 +515,7 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           ])
           if(mainData !== undefined){
-            delete mainData['_']
+            // delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
@@ -596,7 +596,7 @@ module.exports = function makeGunFetch (opts = {}) {
             })
           ])
           if(mainData !== undefined){
-            delete mainData['_']
+            // delete mainData['_']
             return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
