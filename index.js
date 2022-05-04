@@ -369,7 +369,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers['x-authentication']) {
-            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
@@ -427,7 +427,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
           if (headers['x-authentication']) {
-            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -488,7 +488,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers['x-authentication']) {
-            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -570,7 +570,7 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           if (headers['x-authentication']) {
-            if (!user || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
@@ -610,7 +610,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-logout']) {
             if (user.is) {
               if (headers['x-authentication']) {
-                if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+                if (user.check && user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   user.check = null
@@ -627,10 +627,10 @@ module.exports = function makeGunFetch (opts = {}) {
             const useBody = await getBody(body)
             if (user.is) {
               if (headers['x-authentication']) {
-                if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+                if (user.check && user.check.alias !== headers['x-delete'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
-                  if(user.check && user.check.hash === await SEA.work(headers['x-login'], useBody)){
+                  if(user.check && user.check.hash === await SEA.work(headers['x-delete'], useBody)){
                     user.check = null
                     user.leave()
                     mainData = await new Promise((resolve) => {
