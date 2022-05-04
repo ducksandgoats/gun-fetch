@@ -537,7 +537,7 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-login']) {
             const useBody = await getBody(body)
             if (user.is) {
-              if (user.check.hash === await SEA.work(headers['x-login'], useBody)) {
+              if (user.check && user.check.hash === await SEA.work(headers['x-login'], useBody)) {
                 return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               } else {
                 return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>password is incorrect</p></div></body></html>`] : [JSON.stringify('password is incorrect')] }
@@ -549,6 +549,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 })
               })
               if (mainData.err) {
+                user.check = null
                 user.leave()
                 return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
               } else {
@@ -612,6 +613,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
+                  user.check = null
                   user.leave()
                   return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>user has been logged out</p></div></body></html>`] : [JSON.stringify('user has been logged out')] }
                 }
@@ -628,7 +630,8 @@ module.exports = function makeGunFetch (opts = {}) {
                 if (user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
-                  if(user.check.hash === await SEA.work(headers['x-login'], useBody)){
+                  if(user.check && user.check.hash === await SEA.work(headers['x-login'], useBody)){
+                    user.check = null
                     user.leave()
                     mainData = await new Promise((resolve) => {
                       user.delete(headers['x-delete'], useBody, ack => {
