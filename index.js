@@ -557,7 +557,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 user.check.hash = await SEA.work(headers['x-login'], useBody)
                 user.check.pub = mainData.sea.pub
                 user.check.token = await SEA.sign(await SEA.work(crypto.randomBytes(16).toString('hex')), mainData.sea)
-                user,check.alias = headers['x-login']
+                user.check.alias = headers['x-login']
                 return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${{token: user.check.token, pub: user.check.pub}}</p></div></body></html>`] : [JSON.stringify({token: user.check.token, pub: user.check.pub})] }
               }
             }
