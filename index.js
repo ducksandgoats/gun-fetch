@@ -8,19 +8,12 @@ const https = require('https')
 require('gun/lib/path')
 const SEA = Gun.SEA
 
-const DEFAULT_OPTS = {
-  file: path.resolve('./storage'),
-  relays: null,
-  timeout: 15000,
-  relay: false
-}
-
-const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
-const encodeType = '-'
-const hostType = '_'
-
 module.exports = function makeGunFetch (opts = {}) {
+  const DEFAULT_OPTS = {file: path.resolve('./storage'), relays: null, timeout: 15000, relay: false}
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
+  const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
+  const encodeType = '~'
+  const hostType = '_'
 
   const fileLocation = finalOpts.file
   const startRelay = finalOpts.relay
@@ -529,6 +522,7 @@ module.exports = function makeGunFetch (opts = {}) {
                 resolve(ack)
               }, { already: false })
             })
+            user.leave()
             if (mainData.err) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
             } else {
