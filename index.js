@@ -23,13 +23,7 @@ module.exports = function makeGunFetch (opts = {}) {
     fs.mkdirSync(fileLocation)
   }
 
-  const gun = ((finalOpts) => {
-    if(finalOpts.gun){
-      return finalOpts.gun
-    } else {
-      return Gun(finalOpts)
-    }
-  })(finalOpts)
+  const gun = ((finalOpts) => {if(finalOpts.gun){return finalOpts.gun} else {return Gun(finalOpts)}})(finalOpts)
 
   const user = gun.user()
   // const timeout = finalOpts.timeout
