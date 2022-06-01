@@ -6,13 +6,15 @@ const crypto = require('crypto')
 const http = require('http')
 const https = require('https')
 require('gun/lib/path')
+require('gun/lib/load')
+// require('gun/lib/unset')
 const SEA = Gun.SEA
 
 module.exports = function makeGunFetch (opts = {}) {
   const DEFAULT_OPTS = {file: path.resolve('./storage'), relays: null, timeout: 15000, relay: false}
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
   const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
-  const encodeType = '~'
+  const encodeType = 'hex'
   const hostType = '_'
 
   const fileLocation = finalOpts.file
@@ -342,9 +344,9 @@ module.exports = function makeGunFetch (opts = {}) {
 
     try {
       const { hostname, pathname, protocol } = new URL(url)
-      const mainHostname = hostname && hostname[0] === encodeType ? Buffer.from(hostname.slice(1), 'hex').toString('utf-8') : hostname
+      const mainHostname = hostname && hostname.startsWith(encodeType) ? Buffer.from(hostname.slice(encodeType.length), 'hex').toString('utf-8') : hostname
 
-      if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || mainHostname[0] === encodeType || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
+      if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('query is incorrect')] }
       }
 
@@ -425,15 +427,15 @@ module.exports = function makeGunFetch (opts = {}) {
             const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : 5000
             mainData = await new Promise((resolve) => {
               const arr = []
-              gunQuery.get(JSON.parse(headers['x-paginate'])).once((data) => {console.log(typeof(data))}).map().once((found) => {
-                // if(found !== undefined){
-                //   // delete found['_']
+              if(headers['x-load'] && JSON.parse(headers['x-load'])){
+                gunQuery.get(JSON.parse(headers['x-paginate'])).once((data) => {console.log(typeof(data))}).map().load((found) => {
                   arr.push(found)
-                // } else {
-                //   // might as well log something
-                //   console.log('data is ', found)
-                // }
+                })
+              } else {
+                gunQuery.get(JSON.parse(headers['x-paginate'])).once((data) => {console.log(typeof(data))}).map().once((found) => {
+                  arr.push(found)
               })
+              }
               setTimeout(() => {
                 // arr.forEach(data => {if(data !== undefined){delete data['_']}})
                 arr.shift()
@@ -451,15 +453,21 @@ module.exports = function makeGunFetch (opts = {}) {
                 }, queryTimer)
               }),
               new Promise((resolve, reject) => {
-                gunQuery.once(found => {
-                  resolve(found)
-                })
+                if(headers['x-load'] && JSON.parse(headers['x-load'])){
+                  gunQuery.load(found => {
+                    resolve(found)
+                  })
+                } else {
+                  gunQuery.once(found => {
+                    resolve(found)
+                  })
+                }
               })
             ])
           }
           if (mainData !== undefined) {
             // delete mainData['_']
-            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${mainData}</p></div></body></html>`] : [JSON.stringify(mainData)] }
+            return { statusCode: 200, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>${JSON.stringify(mainData)}</p></div></body></html>`] : [JSON.stringify(mainData)] }
           } else {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>Data is undefined, it is empty</p></div></body></html>`] : [JSON.stringify('Data is undefined, it is empty')] }
           }
@@ -496,9 +504,15 @@ module.exports = function makeGunFetch (opts = {}) {
               }, queryTimer)
             }),
             new Promise((resolve, reject) => {
-              gunQuery.once(found => {
-                resolve(found)
-              })
+              if(headers['x-load'] && JSON.parse(headers['x-load'])){
+                gunQuery.load(found => {
+                  resolve(found)
+                })
+              } else {
+                gunQuery.once(found => {
+                  resolve(found)
+                })
+              }
             })
           ])
           if(mainData !== undefined){
@@ -580,9 +594,15 @@ module.exports = function makeGunFetch (opts = {}) {
               }, queryTimer)
             }),
             new Promise((resolve, reject) => {
-              gunQuery.once(found => {
-                resolve(found)
-              })
+              if(headers['x-load'] && JSON.parse(headers['x-load'])){
+                gunQuery.load(found => {
+                  resolve(found)
+                })
+              } else {
+                gunQuery.once(found => {
+                  resolve(found)
+                })
+              }
             })
           ])
           if(mainData !== undefined){
@@ -643,11 +663,8 @@ module.exports = function makeGunFetch (opts = {}) {
         return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>method is not supported</p></div></body></html>`] : [JSON.stringify('method is not supported')] }
       }
     } catch (e) {
-      if(e.name === 'ErrorTimeout'){
-        return { statusCode: 408, headers: {}, data: [e.stack] }
-      } else {
-        return { statusCode: 500, headers: {}, data: [e.stack] }
-      }
+      const useCode = e.name === 'ErrorTimeout' ? 408 : 500
+      return { statusCode: useCode, headers: {'Content-Type': mainRes}, data: mainReq ? [`<html><head><title>${e.name}</title></head><body><div><p>${e.stack}</p></div></body></html>`] : [JSON.stringify(e.stack)]}
     }
   })
 
