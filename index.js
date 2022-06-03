@@ -282,8 +282,7 @@ module.exports = function makeGunFetch (opts = {}) {
   }
 
   function formatReq (hostname, pathname) {
-    hostname = decodeURIComponent(hostname)
-    pathname = decodeURIComponent(pathname)
+    
     const mainReq = {}
     // mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => { return decodeURIComponent(data) })
     mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean)
@@ -353,7 +352,7 @@ module.exports = function makeGunFetch (opts = {}) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('query is incorrect')] }
       }
 
-      const main = formatReq(mainHostname, pathname)
+      const main = formatReq(decodeURIComponent(mainHostname), decodeURIComponent(pathname))
 
       if(method === 'HEAD'){
         if (main.mainQuery) {
