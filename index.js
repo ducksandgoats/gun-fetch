@@ -282,8 +282,11 @@ module.exports = function makeGunFetch (opts = {}) {
   }
 
   function formatReq (hostname, pathname) {
+    hostname = decodeURIComponent(hostname)
+    pathname = decodeURIComponent(pathname)
     const mainReq = {}
-    mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => { return decodeURIComponent(data) })
+    // mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => { return decodeURIComponent(data) })
+    mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean)
     mainReq.multiple = mainReq.mainPath.length > 1
     mainReq.mainHost = mainReq.mainPath.shift()
     mainReq.queryType = mainReq.mainHost[0] === hostType ? mainReq.mainHost[0] : ''
