@@ -14,7 +14,7 @@ module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
   const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
   const encodeType = 'hex'
-  const hostType = '~'
+  const hostType = '_'
 
   const fileLocation = finalOpts.file
   const startRelay = finalOpts.relay
