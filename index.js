@@ -5,7 +5,6 @@ const fs = require('fs')
 const crypto = require('crypto')
 const http = require('http')
 const https = require('https')
-require('gun/lib/path')
 require('gun/lib/load')
 // require('gun/lib/unset')
 const SEA = Gun.SEA
