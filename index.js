@@ -15,7 +15,7 @@ module.exports = function makeGunFetch (opts = {}) {
   const finalOpts = { ...DEFAULT_OPTS, ...opts }
   const SUPPORTED_METHODS = ['HEAD', 'GET', 'PUT', 'DELETE']
   const encodeType = 'hex'
-  const hostType = '_'
+  const hostType = '~'
 
   const fileLocation = finalOpts.file
   const startRelay = finalOpts.relay
@@ -285,12 +285,10 @@ module.exports = function makeGunFetch (opts = {}) {
     
     const mainReq = {}
     // mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean).map(data => { return decodeURIComponent(data) })
-    mainReq.mainPath = `${hostname}${pathname}`.split('/').filter(Boolean)
-    mainReq.multiple = mainReq.mainPath.length > 1
-    mainReq.mainHost = mainReq.mainPath.shift()
+    mainReq.mainHost = hostname
+    mainReq.mainPath = pathname.split('/').filter(Boolean)
     mainReq.queryType = mainReq.mainHost[0] === hostType ? mainReq.mainHost[0] : ''
     mainReq.mainHost = mainReq.mainHost.replace(mainReq.queryType, '')
-    mainReq.mainPath = mainReq.mainPath.join('.')
 
     if (mainReq.queryType) {
       if (mainReq.mainHost) {
@@ -314,17 +312,30 @@ module.exports = function makeGunFetch (opts = {}) {
 
   function queryizeReq (mainReq, auth) {
     if (auth) {
-      return mainReq.multiple ? user.path(mainReq.mainPath) : user
+      let userQuery = user
+      if(mainReq.mainPath.length){
+        mainReq.mainPath.forEach(data => {
+          userQuery = userQuery.get(decodeURIComponent(data))
+        })
+      }
+      return userQuery
     } else {
+      let regQuery = gun
       if (mainReq.queryType) {
         if (mainReq.mainHost.includes('.') || mainReq.mainHost.includes('-') || mainReq.mainHost.includes('_')) {
-          return mainReq.multiple ? gun.get('~' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~' + mainReq.mainHost)
+          regQuery = regQuery.get('~' + mainReq.mainHost)
         } else {
-          return mainReq.multiple ? gun.get('~@' + mainReq.mainHost).path(mainReq.mainPath) : gun.get('~@' + mainReq.mainHost)
+          regQuery = regQuery.get('~@' + mainReq.mainHost)
         }
       } else {
-        return mainReq.multiple ? gun.get(mainReq.mainHost).path(mainReq.mainPath) : gun.get('~' + mainReq.mainHost)
+        regQuery = regQuery.get(mainReq.mainHost)
       }
+      if(mainReq.mainPath.length){
+        mainReq.mainPath.forEach(data => {
+          regQuery = regQuery.get(decodeURIComponent(data))
+        })
+      }
+      return regQuery
     }
   }
 
