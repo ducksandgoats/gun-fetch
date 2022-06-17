@@ -355,7 +355,7 @@ module.exports = function makeGunFetch (opts = {}) {
     const mainRes = mainReq ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'
 
     try {
-      const { hostname, pathname, protocol } = new URL(url)
+      const { hostname, pathname, protocol, searchParams } = new URL(url)
       const mainHostname = hostname && hostname.startsWith(encodeType) ? Buffer.from(hostname.slice(encodeType.length), 'hex').toString('utf-8') : hostname
 
       if (protocol !== 'gun:' || !method || !SUPPORTED_METHODS.includes(method) || !mainHostname || !/^[a-zA-Z0-9-_.]+$/.test(mainHostname)) {
@@ -369,13 +369,13 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
-          if (headers['x-authentication']) {
-            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+          if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': 'application/json; charset=utf-8' }, data: [Buffer.from('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
-          gunQuery = queryizeReq(main, headers['x-authentication'])
+          gunQuery = queryizeReq(main, headers['x-authentication'] || searchParams.get('x-authentication'))
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           mainData = await new Promise((resolve) => {
             gunQuery.once(found => {
@@ -427,16 +427,16 @@ module.exports = function makeGunFetch (opts = {}) {
           let gunQuery = null
           let mainData = null
           // if this is a query for the user space, then we make sure the user is authenticated
-          if (headers['x-authentication']) {
-            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+          if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
           // if the user is authenticated, then we turn the request into a query
-          gunQuery = queryizeReq(main, headers['x-authentication'])
+          gunQuery = queryizeReq(main, headers['x-authentication'] || searchParams.get('x-authentication'))
           // if x-not or x-paginate is not sent, then we assume this is a regular query
           if (headers['x-paginate']) {
-            const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : 5000
+            const queryTimer = (headers['x-timer'] && headers['x-timer'] !== '0') || (searchParams.has('x-timer') && searchParams.get('x-timer') !== '0') ? Number(headers['x-timer'] || searchParams.get('x-timer')) * 1000 : 5000
             mainData = await new Promise((resolve) => {
               const arr = []
               if(headers['x-load'] && JSON.parse(headers['x-load'])){
@@ -455,7 +455,7 @@ module.exports = function makeGunFetch (opts = {}) {
               }, queryTimer)
             })
           } else {
-            const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
+            const queryTimer = (headers['x-timer'] && headers['x-timer'] !== '0') || (searchParams.has('x-timer') && searchParams.get('x-timer') !== '0') ? Number(headers['x-timer'] || searchParams.get('x-timer')) * 1000 : useTimeOut
             mainData = await Promise.race([
               new Promise((resolve, reject) => {
                 setTimeout(() => {
@@ -494,16 +494,16 @@ module.exports = function makeGunFetch (opts = {}) {
         if (main.mainQuery) {
           let gunQuery = null
           let mainData = null
-          if (headers['x-authentication']) {
-            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+          if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
-          gunQuery = queryizeReq(main, headers['x-authentication'])
+          gunQuery = queryizeReq(main, headers['x-authentication'] || searchParams.get('x-authentication'))
           const useBody = await getBody(body)
-          const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
-          if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)}, JSON.parse(headers['x-opt']))
+          const queryTimer = (headers['x-timer'] && headers['x-timer'] !== '0') || (searchParams.has('x-timer') && searchParams.get('x-timer') !== '0') ? Number(headers['x-timer'] || searchParams.get('x-timer')) * 1000 : useTimeOut
+          if(headers['x-opt'] || searchParams.has('x-opt')){
+            gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)}, JSON.parse(headers['x-opt'] || decodeURIComponent(searchParams.get('x-opt'))))
           } else {
             gunQuery = gunQuery.put(useBody, putData => {console.log(putData.err || putData.ok)})
           }
@@ -583,20 +583,20 @@ module.exports = function makeGunFetch (opts = {}) {
         if (main.mainQuery) {
           let gunQuery = null
           let mainData = null
-          if (headers['x-authentication']) {
-            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+          if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+            if (!user.is || !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
               return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
             }
           }
-          gunQuery = queryizeReq(main, headers['x-authentication'])
+          gunQuery = queryizeReq(main, headers['x-authentication'] || searchParams.get('x-authentication'))
           const checkBody = await getBody(body)
           const useBody = checkBody === null ? checkBody : takeOutObj(checkBody)
-          if(headers['x-opt']){
-            gunQuery = gunQuery.put(useBody, cb => console.log(cb.err || cb.ok), JSON.parse(headers['x-opt']))
+          if(headers['x-opt'] || searchParams.has('x-opt')){
+            gunQuery = gunQuery.put(useBody, cb => console.log(cb.err || cb.ok), JSON.parse(headers['x-opt'] || decodeURIComponent(searchParams.get('x-opt'))))
           } else {
             gunQuery = gunQuery.put(useBody, cb => console.log(cb.err || cb.ok))
           }
-          const queryTimer = headers['x-timer'] && headers['x-timer'] !== '0' ? JSON.parse(headers['x-timer']) * 1000 : useTimeOut
+          const queryTimer = (headers['x-timer'] && headers['x-timer'] !== '0') || (searchParams.has('x-timer') && searchParams.get('x-timer') !== '0') ? Number(headers['x-timer'] || searchParams.get('x-timer')) * 1000 : useTimeOut
           mainData = await Promise.race([
             new Promise((resolve, reject) => {
               setTimeout(() => {
@@ -629,8 +629,8 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>"X-Delete" or "X-Logout" header is needed with the alias</p></div></body></html>`] : [JSON.stringify('"x-delete" or "x-logout" header is needed with the alias')] }
           } else if (headers['x-logout']) {
             if (user.is) {
-              if (headers['x-authentication']) {
-                if (user.check && user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+              if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+                if (user.check && user.check.alias !== headers['x-logout'] && !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   user.check = null
@@ -646,8 +646,8 @@ module.exports = function makeGunFetch (opts = {}) {
           } else if (headers['x-delete']) {
             const useBody = await getBody(body)
             if (user.is) {
-              if (headers['x-authentication']) {
-                if (user.check && user.check.alias !== headers['x-delete'] && !Boolean(await SEA.verify(headers['x-authentication'], user.check.pub))) {
+              if (headers['x-authentication'] || searchParams.has('x-authentication')) {
+                if (user.check && user.check.alias !== headers['x-delete'] && !Boolean(await SEA.verify(headers['x-authentication'] || searchParams.get('x-authentication'), user.check.pub))) {
                   return { statusCode: 400, headers: { 'Content-Type': mainRes }, data: mainReq ? [`<html><head><title>${mainHostname}</title></head><body><div><p>${pathname}</p><p>either user is not logged in, or you are not verified</p></div></body></html>`] : [JSON.stringify('either user is not logged in, or you are not verified')] }
                 } else {
                   if(user.check && user.check.hash === await SEA.work(headers['x-delete'], useBody)){
