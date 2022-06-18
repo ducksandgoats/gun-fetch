@@ -391,13 +391,7 @@ module.exports = function makeGunFetch (opts = {}) {
             return { statusCode: 400, headers: {}, data: [] }
           }
         } else {
-          if(headers['x-relay']){
-            if (Object.keys(gun.back('opt.peers')).length) {
-              return { statusCode: 200, headers: {'X-Relay': 'true'}, data: [] }
-            } else {
-              return { statusCode: 400, headers: {'X-Relay': 'false'}, data: [] }
-            }
-          } else if(headers['x-node']){
+          if(headers['x-node']){
             if (Object.keys(gun.back('opt.peers')).includes(headers['x-node'])) {
               return { statusCode: 200, headers: {'X-Node': headers['x-node']}, data: [] }
             } else {
@@ -419,7 +413,11 @@ module.exports = function makeGunFetch (opts = {}) {
               return { statusCode: 200, headers: {'X-Peer': headers['x-peer']}, data: [] }
             }
           } else {
-            return { statusCode: 400, headers: {}, data: [] }
+            if (Object.keys(gun.back('opt.peers')).length) {
+              return { statusCode: 200, headers: {'X-Relay': 'true'}, data: [] }
+            } else {
+              return { statusCode: 400, headers: {'X-Relay': 'false'}, data: [] }
+            }
           }
         }
       } else if (method === 'GET') {
